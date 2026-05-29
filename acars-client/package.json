@@ -1,5 +1,5 @@
 {
-  "name": "acars-client",
+  "name": "flyawayacars",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -26,6 +26,7 @@
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
     "autoprefixer": "^10.5.0",
+    "jimp": "^1.6.1",
     "postcss": "^8.5.15",
     "tailwindcss": "^3.4.19",
     "typescript": "~5.8.3",

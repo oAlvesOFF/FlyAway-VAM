@@ -714,9 +714,189 @@ new class extends Component {
             </div>
         </div>
 
-    @else
-        <div style="margin-top: 32px; text-align: center; color: #6b7280; font-size: 14px;">
-            Content for {{ $activeTab }} tab
+    @elseif($activeTab === 'Awards')
+        <div style="margin-top: 24px;">
+            @if(count($user->achievements) > 0)
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px;">
+                    @foreach($user->achievements as $achievement)
+                        <div class="custom-card" style="padding: 24px; display: flex; gap: 16px; align-items: flex-start; transition: all 0.2s;">
+                            <div style="width: 48px; height: 48px; border-radius: 8px; background: #1a1a1c; border: 1px solid #333; display: flex; align-items: center; justify-content: center; color: #ef4444; flex-shrink: 0;">
+                                @if($achievement->icon)
+                                    <i class="{{ $achievement->icon }} text-xl"></i>
+                                @else
+                                    <svg class="icon-lg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                @endif
+                            </div>
+                            <div>
+                                <h3 style="font-size: 14px; font-weight: bold; color: #fff; margin: 0 0 4px 0;">{{ $achievement->name }}</h3>
+                                <p style="font-size: 11px; color: #888; margin: 0 0 8px 0; line-height: 1.4;">{{ $achievement->description }}</p>
+                                <div style="font-size: 9px; color: #6b7280; text-transform: uppercase; font-weight: bold;">
+                                    Unlocked {{ \Carbon\Carbon::parse($achievement->pivot->unlocked_at)->diffForHumans() }}
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <div class="custom-card" style="padding: 48px; text-align: center;">
+                    <svg class="icon-lg" style="color: #333; margin: 0 auto 16px auto; width: 48px; height: 48px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                    <h3 style="font-size: 16px; font-weight: bold; color: #fff; margin: 0 0 8px 0;">No Awards Yet</h3>
+                    <p style="font-size: 12px; color: #888; margin: 0;">Complete flights and milestones to earn awards.</p>
+                </div>
+            @endif
+        </div>
+
+    @elseif($activeTab === 'Tours')
+        <div style="margin-top: 24px;">
+            @if(count($user->tours) > 0)
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 24px;">
+                    @foreach($user->tours as $tour)
+                        @php
+                            $progress = $tourProgress[$tour->id] ?? ['pct' => 0, 'completed' => false];
+                        @endphp
+                        <div class="custom-card" style="padding: 24px;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                                <div>
+                                    <span style="background: #1a1a1c; color: #9ca3af; font-size: 9px; font-weight: bold; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; border: 1px solid #333;">{{ $tour->category }}</span>
+                                    <h3 style="font-size: 15px; font-weight: bold; color: #fff; margin: 8px 0 4px 0;">{{ $tour->name }}</h3>
+                                </div>
+                                @if($progress['completed'])
+                                    <div style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-size: 9px; font-weight: bold; text-transform: uppercase; padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.2);">Completed</div>
+                                @endif
+                            </div>
+                            <p style="font-size: 11px; color: #888; margin: 0 0 16px 0; line-height: 1.5;">{{ $tour->description ?: 'No description provided.' }}</p>
+                            
+                            {{-- Progress Bar --}}
+                            <div style="margin-bottom: 16px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-bottom: 6px;">
+                                    <span style="color: #9ca3af;">Progress</span>
+                                    <span style="color: #fff;">{{ $progress['pct'] }}%</span>
+                                </div>
+                                <div style="height: 6px; background: #1a1a1c; border-radius: 3px; overflow: hidden; border: 1px solid #333;">
+                                    <div style="height: 100%; width: {{ $progress['pct'] }}%; background: #ef4444; transition: width 0.5s;"></div>
+                                </div>
+                            </div>
+                            
+                            {{-- Waypoints summary --}}
+                            @php $wp = is_array($tour->waypoints) ? $tour->waypoints : json_decode($tour->waypoints, true); @endphp
+                            @if(is_array($wp) && count($wp) > 0)
+                                <div style="font-size: 10px; color: #6b7280; display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+                                    <svg class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                                    {{ count($wp) }} Waypoints: {{ implode(' → ', array_slice($wp, 0, 4)) }} {{ count($wp) > 4 ? '...' : '' }}
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <div class="custom-card" style="padding: 48px; text-align: center;">
+                    <svg class="icon-lg" style="color: #333; margin: 0 auto 16px auto; width: 48px; height: 48px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3.25 10.5a7.25 7.25 0 1114.5 0 7.25 7.25 0 01-14.5 0z M9.75 14.5a4.25 4.25 0 118.5 0 4.25 4.25 0 01-8.5 0z"/></svg>
+                    <h3 style="font-size: 16px; font-weight: bold; color: #fff; margin: 0 0 8px 0;">No Tours Enrolled</h3>
+                    <p style="font-size: 12px; color: #888; margin: 0;">Enroll in tours from the Tour Center.</p>
+                </div>
+            @endif
+        </div>
+
+    @elseif($activeTab === 'Passport')
+        <div class="row-split">
+            <div class="col-left custom-card" style="padding: 32px 24px;">
+                <div class="card-header-title" style="margin-bottom: 24px;">Passport Stats</div>
+                <div class="stats-grid" style="grid-template-columns: 1fr; row-gap: 24px; text-align: left;">
+                    <div>
+                        <div class="stat-lbl" style="margin-top: 0; margin-bottom: 6px;">Unique Airports</div>
+                        <div class="stat-val">{{ $passportStats['uniqueAirports'] }}</div>
+                    </div>
+                    <div>
+                        <div class="stat-lbl" style="margin-top: 0; margin-bottom: 6px;">Countries Visited</div>
+                        <div class="stat-val">{{ $passportStats['countries'] }}</div>
+                    </div>
+                    <div>
+                        <div class="stat-lbl" style="margin-top: 0; margin-bottom: 6px;">Total Distance Flown</div>
+                        <div class="stat-val">{{ number_format($passportStats['totalDistance']) }} <span style="font-size: 12px; color: #888; font-weight: normal;">nm</span></div>
+                    </div>
+                    <div>
+                        <div class="stat-lbl" style="margin-top: 0; margin-bottom: 6px;">Most Visited</div>
+                        <div class="stat-val" style="color: #ef4444;">{{ $passportStats['mostVisited'] }}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-right custom-card" style="padding: 24px;">
+                <div class="card-header-title" style="margin-bottom: 24px;">Airports Visited (Stamps)</div>
+                @if(empty($passportStats['airports']))
+                    <p style="font-size: 12px; color: #6b7280;">No airports visited yet.</p>
+                @else
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        @foreach($passportStats['airports'] as $icao => $visits)
+                            <div style="background: #111113; border: 1px dashed #333; border-radius: 4px; padding: 8px 12px; display: flex; flex-direction: column; align-items: center; min-width: 60px;">
+                                <div style="font-weight: bold; font-size: 14px; color: #fff; letter-spacing: 1px;">{{ $icao }}</div>
+                                <div style="font-size: 9px; color: #ef4444; font-weight: bold; margin-top: 2px;">{{ $visits }}x</div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        </div>
+
+    @elseif($activeTab === 'Logbook')
+        <div class="custom-card pp-table-container" style="margin-top: 24px;">
+            <table class="pp-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Flight #</th>
+                        <th>Departure</th>
+                        <th>Arrival</th>
+                        <th>Aircraft</th>
+                        <th>Duration</th>
+                        <th>FPM</th>
+                        <th>Score</th>
+                        <th>Status</th>
+                        <th>Options</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @php 
+                        $allFlights = $user->pireps()->latest()->paginate(20, ['*'], 'logbook');
+                    @endphp
+                    @forelse($allFlights as $f)
+                    <tr>
+                        <td style="color: #888;">{{ $f->created_at->format('Y-m-d H:i') }}</td>
+                        <td style="color: #fff; font-weight: 500;">{{ $f->flight_number }}</td>
+                        <td style="color: #fff; font-weight: 500;">{{ $f->departure }}</td>
+                        <td style="color: #fff; font-weight: 500;">{{ $f->arrival }}</td>
+                        <td style="color: #9ca3af;">{{ $f->aircraft_icao ?: 'N/A' }}</td>
+                        <td style="color: #9ca3af;">{{ $f->flight_time }}h</td>
+                        <td style="color: #9ca3af;">{{ $f->landing_rate ? $f->landing_rate.'fpm' : '-' }}</td>
+                        <td style="color: #fff;">{{ $f->score }}</td>
+                        <td>
+                            @if($f->status === 'approved')
+                                <span style="color: #10b981; font-size: 9px; font-weight: bold; text-transform: uppercase;">Approved</span>
+                            @elseif($f->status === 'rejected')
+                                <span style="color: #ef4444; font-size: 9px; font-weight: bold; text-transform: uppercase;">Rejected</span>
+                            @else
+                                <span style="color: #f59e0b; font-size: 9px; font-weight: bold; text-transform: uppercase;">Pending</span>
+                            @endif
+                        </td>
+                        <td>
+                            <button style="background: #1a1a1c; border: 1px solid #333; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer;">VIEW</button>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="10" style="text-align: center; padding: 32px; color: #6b7280;">No flights recorded in logbook yet.</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+            
+            <div style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #6b7280; border-top: 1px solid #1f1f22;">
+                <div>Showing {{ $allFlights->firstItem() ?? 0 }} to {{ $allFlights->lastItem() ?? 0 }} of {{ $allFlights->total() }} flights</div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button style="background: transparent; border: 1px solid #333; color: #888; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;" {{ $allFlights->onFirstPage() ? 'disabled' : '' }} wire:click="gotoPage({{ $allFlights->currentPage() - 1 }}, 'logbook')">Previous</button>
+                    <button style="background: #1a1a1c; border: 1px solid #333; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;" {{ !$allFlights->hasMorePages() ? 'disabled' : '' }} wire:click="gotoPage({{ $allFlights->currentPage() + 1 }}, 'logbook')">Next</button>
+                </div>
+            </div>
         </div>
     @endif
 
