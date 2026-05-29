@@ -20,8 +20,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? config('app.name', 'Atlantic Star Airways') }}</title>
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+    {{-- Fonts --}}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    {{-- Phosphor Icons --}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.min.css" />
+    {{-- App styles --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
     @stack('styles')
@@ -227,7 +233,7 @@
         </aside>
 
         {{-- Main Content --}}
-        <div :class="sidebarOpen ? 'lg:ml-64' : 'lg:ml-16'" class="flex-1 flex flex-col min-h-screen transition-all duration-300">
+        <div :class="sidebarOpen ? 'lg:ml-64' : 'lg:ml-16'" class="flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0 overflow-x-hidden">
             {{-- Top Header --}}
             <header class="sticky top-0 z-20 h-16 bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 backdrop-blur-xl">
                 <div class="h-full px-4 lg:px-6 flex items-center justify-between gap-4">
@@ -307,9 +313,13 @@
                                         <p class="text-sm font-medium text-slate-900 dark:text-white">{{ auth()->user()->name }}</p>
                                         <p class="text-xs text-slate-500 dark:text-slate-400">{{ auth()->user()->pilot_id }}</p>
                                     </div>
-                                    <div class="w-9 h-9 rounded-xl bg-crimson-100 dark:bg-crimson-900/50 flex items-center justify-center">
-                                        <span class="text-sm font-bold text-crimson-700 dark:text-crimson-400">{{ substr(auth()->user()->name, 0, 2) }}</span>
-                                    </div>
+                                    @if(auth()->user()->avatar)
+                                        <img src="{{ Storage::url(auth()->user()->avatar) }}" alt="Avatar" class="w-9 h-9 rounded-xl object-cover">
+                                    @else
+                                        <div class="w-9 h-9 rounded-xl bg-crimson-100 dark:bg-crimson-900/50 flex items-center justify-center">
+                                            <span class="text-sm font-bold text-crimson-700 dark:text-crimson-400">{{ substr(auth()->user()->name, 0, 2) }}</span>
+                                        </div>
+                                    @endif
                                 </button>
                                 <div x-show="userMenuOpen"
                                      x-transition:enter="transition ease-out duration-100"

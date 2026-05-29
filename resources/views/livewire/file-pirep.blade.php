@@ -123,91 +123,94 @@ new class extends Component {
     }
 }; ?>
 
-<div class="max-w-3xl mx-auto space-y-6">
-    <div>
-        <h1 class="text-2xl font-bold text-slate-900 dark:text-white">File a PIREP</h1>
-        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Submit a Pilot Report after completing a flight.</p>
+<div class="sp-wrap" style="max-width: 800px;">
+    <div class="sp-title-area">
+        <div class="sp-title">
+            <i class="ph-fill ph-paper-plane-tilt"></i> File a PIREP
+        </div>
     </div>
 
     @if(session('success'))
-        <div class="card bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 p-4 text-emerald-700 dark:text-emerald-400 text-sm">
-            {{ session('success') }}
+        <div class="sp-card" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); padding: 16px; margin-bottom: 24px; color: #10b981; font-weight: 600; font-size: 13px;">
+            <i class="ph-fill ph-check-circle" style="margin-right: 6px;"></i> {{ session('success') }}
         </div>
     @endif
     @if(session('error'))
-        <div class="card bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 p-4 text-red-700 dark:text-red-400 text-sm">
-            {{ session('error') }}
+        <div class="sp-card" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); padding: 16px; margin-bottom: 24px; color: #ef4444; font-weight: 600; font-size: 13px;">
+            <i class="ph-fill ph-warning-circle" style="margin-right: 6px;"></i> {{ session('error') }}
         </div>
     @endif
 
-    <div class="card p-6 space-y-5">
-        @if(count($bookings) > 0)
-        <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">From Booking</label>
-            <select wire:model.live="selectedBidId" wire:change="selectBooking" class="input-field">
-                <option value="">-- Select a booking --</option>
-                @foreach($bookings as $b)
-                    <option value="{{ $b->id }}">{{ $b->schedule->flight_number }} ({{ $b->schedule->departure }} → {{ $b->schedule->arrival }})</option>
-                @endforeach
-            </select>
-        </div>
-        @endif
+    <div class="sp-card" style="margin-bottom: 32px;">
+        <div class="sp-card-body" style="display: flex; flex-direction: column; gap: 20px;">
+            @if(count($bookings) > 0)
+            <div>
+                <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">From Booking</div>
+                <select wire:model.live="selectedBidId" wire:change="selectBooking" class="sp-input">
+                    <option value="">-- Select a booking --</option>
+                    @foreach($bookings as $b)
+                        <option value="{{ $b->id }}">{{ $b->schedule->flight_number }} ({{ $b->schedule->departure }} &rarr; {{ $b->schedule->arrival }})</option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
 
-        <div class="grid md:grid-cols-2 gap-4">
-            <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Flight Number *</label>
-                <input wire:model="flight_number" class="input-field" placeholder="FA101">
-                @error('flight_number') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <div>
+                    <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Flight Number <span style="color: #ef4444;">*</span></div>
+                    <input wire:model="flight_number" class="sp-input" placeholder="FA101">
+                    @error('flight_number') <div style="font-size: 11px; color: #ef4444; margin-top: 4px;">{{ $message }}</div> @enderror
+                </div>
+                <div>
+                    <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Flight Time (hrs) <span style="color: #ef4444;">*</span></div>
+                    <input wire:model="flight_time" class="sp-input" type="number" step="0.1" placeholder="2.5">
+                    @error('flight_time') <div style="font-size: 11px; color: #ef4444; margin-top: 4px;">{{ $message }}</div> @enderror
+                </div>
+                <div>
+                    <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Departure <span style="color: #ef4444;">*</span></div>
+                    <input wire:model="departure" class="sp-input" placeholder="YSSY" maxlength="4">
+                    @error('departure') <div style="font-size: 11px; color: #ef4444; margin-top: 4px;">{{ $message }}</div> @enderror
+                </div>
+                <div>
+                    <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Arrival <span style="color: #ef4444;">*</span></div>
+                    <input wire:model="arrival" class="sp-input" placeholder="YMML" maxlength="4">
+                    @error('arrival') <div style="font-size: 11px; color: #ef4444; margin-top: 4px;">{{ $message }}</div> @enderror
+                </div>
+                <div>
+                    <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Aircraft Registration <span style="color: #ef4444;">*</span></div>
+                    <input wire:model="aircraft_registration" class="sp-input" placeholder="VH-NXC">
+                    @error('aircraft_registration') <div style="font-size: 11px; color: #ef4444; margin-top: 4px;">{{ $message }}</div> @enderror
+                </div>
+                <div>
+                    <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Aircraft ICAO <span style="color: #ef4444;">*</span></div>
+                    <input wire:model="aircraft_icao" class="sp-input" placeholder="B738">
+                    @error('aircraft_icao') <div style="font-size: 11px; color: #ef4444; margin-top: 4px;">{{ $message }}</div> @enderror
+                </div>
+                <div>
+                    <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Landing Rate (fpm)</div>
+                    <input wire:model="landing_rate" class="sp-input" type="number" placeholder="-150">
+                    @error('landing_rate') <div style="font-size: 11px; color: #ef4444; margin-top: 4px;">{{ $message }}</div> @enderror
+                </div>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Flight Time (hrs) *</label>
-                <input wire:model="flight_time" class="input-field" type="number" step="0.1" placeholder="2.5">
-                @error('flight_time') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Departure *</label>
-                <input wire:model="departure" class="input-field" placeholder="YSSY" maxlength="4">
-                @error('departure') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Arrival *</label>
-                <input wire:model="arrival" class="input-field" placeholder="YMML" maxlength="4">
-                @error('arrival') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Aircraft Registration *</label>
-                <input wire:model="aircraft_registration" class="input-field" placeholder="VH-NXC">
-                @error('aircraft_registration') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Aircraft ICAO *</label>
-                <input wire:model="aircraft_icao" class="input-field" placeholder="B738">
-                @error('aircraft_icao') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Landing Rate (fpm)</label>
-                <input wire:model="landing_rate" class="input-field" type="number" placeholder="-150">
-                @error('landing_rate') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
-            </div>
-        </div>
 
-        <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Route</label>
-            <input wire:model="route" class="input-field" placeholder="SYD RIC H66 ML">
-        </div>
+            <div>
+                <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Route</div>
+                <input wire:model="route" class="sp-input" placeholder="SYD RIC H66 ML">
+            </div>
 
-        <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Flight Log (optional)</label>
-            <textarea wire:model="log" class="input-field" rows="3" placeholder="ACARS log or notes about the flight..."></textarea>
-        </div>
+            <div>
+                <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Flight Log (optional)</div>
+                <textarea wire:model="log" class="sp-input" rows="3" placeholder="ACARS log or notes about the flight..."></textarea>
+            </div>
 
-        <div class="flex justify-end gap-3 pt-2">
-            <button wire:click="resetForm" type="button" class="btn-secondary">Reset</button>
-            <button wire:click="submit" wire:loading.attr="disabled" class="btn-primary flex items-center gap-2">
-                <svg wire:loading wire:target="submit" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                <span wire:loading.remove wire:target="submit">Submit PIREP</span>
-                <span wire:loading wire:target="submit">Submitting...</span>
-            </button>
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px;">
+                <button wire:click="resetForm" type="button" class="sp-btn-secondary">Reset</button>
+                <button wire:click="submit" wire:loading.attr="disabled" class="sp-btn-primary">
+                    <i wire:loading.remove wire:target="submit" class="ph-bold ph-paper-plane-tilt"></i>
+                    <span wire:loading wire:target="submit">...</span>
+                    <span wire:loading.remove wire:target="submit">Submit PIREP</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -217,15 +220,20 @@ new class extends Component {
     @endphp
     @if(count($myPireps) > 0)
     <div>
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-3">My Recent PIREPs</h2>
-        <div class="space-y-2">
+        <div style="font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 16px;">
+            <i class="ph-fill ph-clock-counter-clockwise"></i> My Recent PIREPs
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
             @foreach($myPireps as $p)
-            <div class="card-hover p-4 flex items-center justify-between">
+            <div class="sp-card card-hover" style="padding: 16px; display: flex; align-items: center; justify-content: space-between;">
                 <div>
-                    <p class="text-sm font-medium text-slate-900 dark:text-white">{{ $p->flight_number }} &middot; {{ $p->departure }} → {{ $p->arrival }}</p>
-                    <p class="text-xs text-slate-500">{{ $p->aircraft_registration }} &middot; {{ $p->flight_time }}h @if($p->landing_rate) &middot; {{ $p->landing_rate }}fpm @endif</p>
+                    <div style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">{{ $p->flight_number }} &middot; {{ $p->departure }} &rarr; {{ $p->arrival }}</div>
+                    <div style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">
+                        {{ $p->aircraft_registration }} &middot; {{ $p->flight_time }}h 
+                        @if($p->landing_rate) &middot; {{ $p->landing_rate }}fpm @endif
+                    </div>
                 </div>
-                <span class="badge-{{ $p->status === 'approved' ? 'success' : ($p->status === 'rejected' ? 'danger' : 'info') }}">
+                <span class="sp-badge {{ $p->status === 'approved' ? 'approved' : ($p->status === 'rejected' ? 'rejected' : 'pending') }}">
                     {{ ucfirst($p->status) }}
                 </span>
             </div>

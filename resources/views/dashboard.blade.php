@@ -2,199 +2,551 @@
 
 @php $chartPireps = auth()->user()->pireps()->latest()->limit(10)->get(['status', 'score', 'flight_number', 'created_at']); @endphp
 
+@push('styles')
+<style>
+/* ══ Dashboard — Dynamic Theme Colors ══════════════════════════ */
+:root {
+    --bg-page: #f1f3f7;
+    --bg-card: #ffffff;
+    --bg-header: #f1f3f5;
+    --border-card: #e5e7eb;
+    --text-primary: #111827;
+    --text-secondary: #374151;
+    --text-muted: #9ca3af;
+    --bg-badge: rgba(81, 140, 229, 0.1);
+    --border-badge: rgba(81, 140, 229, 0.25);
+    --text-badge: #518ce5;
+    --shadow-card: 0 1px 3px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.04);
+    --hover-lift: 0 4px 16px rgba(0,0,0,.10);
+}
+
+.dark {
+    --bg-page: #13162b;
+    --bg-card: #1e2235;
+    --bg-header: #191c2f;
+    --border-card: #2e3350;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #4b5563;
+    --bg-badge: rgba(81, 140, 229, 0.15);
+    --border-badge: rgba(81, 140, 229, 0.3);
+    --text-badge: #6ea8f7;
+    --shadow-card: 0 1px 3px rgba(0,0,0,.3);
+    --hover-lift: 0 6px 24px rgba(0,0,0,.35);
+}
+
+body, main { background: var(--bg-page) !important; }
+
+.db-wrap {
+    padding: 28px 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+    font-family: 'Inter', sans-serif;
+}
+
+/* ── Welcome Banner ──────────────────────────────────────────── */
+.db-banner {
+    background: linear-gradient(135deg, #1a2a6c 0%, #2553a0 50%, #518ce5 100%);
+    border-radius: 14px;
+    padding: 32px 36px;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.db-banner::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -80px;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+}
+.db-banner::after {
+    content: '';
+    position: absolute;
+    bottom: -80px; right: 120px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+}
+.db-banner-left { position: relative; z-index: 1; }
+.db-banner-label { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 8px; }
+.db-banner-name { font-size: 28px; font-weight: 800; color: #fff; line-height: 1.2; }
+.db-banner-sub { font-size: 14px; color: rgba(255,255,255,0.65); margin-top: 6px; }
+.db-banner-right { display: flex; gap: 12px; position: relative; z-index: 1; }
+.db-banner-badge {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 10px;
+    padding: 12px 20px;
+    text-align: center;
+    min-width: 80px;
+    backdrop-filter: blur(6px);
+}
+.db-banner-badge-val { font-size: 22px; font-weight: 800; color: #fff; line-height: 1; }
+.db-banner-badge-lbl { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: .06em; margin-top: 4px; }
+
+/* ── Stats Row ───────────────────────────────────────────────── */
+.db-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+}
+@media (max-width: 900px) { .db-stats { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 500px) { .db-stats { grid-template-columns: 1fr; } }
+
+.db-stat {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow-card);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: box-shadow .2s, transform .2s;
+    cursor: default;
+}
+.db-stat:hover { box-shadow: var(--hover-lift); transform: translateY(-2px); }
+.db-stat-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+}
+.db-stat-icon.blue  { background: rgba(81,140,229,0.12); color: #518ce5; }
+.db-stat-icon.green { background: rgba(16,185,129,0.12); color: #10b981; }
+.db-stat-icon.amber { background: rgba(245,158,11,0.12); color: #f59e0b; }
+.db-stat-icon.red   { background: rgba(239,68,68,0.12); color: #ef4444; }
+.db-stat-icon.indigo { background: rgba(99,102,241,0.12); color: #6366f1; }
+.db-stat-val { font-size: 22px; font-weight: 800; color: var(--text-primary); line-height: 1; }
+.db-stat-lbl { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .07em; margin-top: 5px; }
+
+/* ── Main Grid ───────────────────────────────────────────────── */
+.db-main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+@media (max-width: 900px) { .db-main-grid { grid-template-columns: 1fr; } }
+
+/* ── Card Base ───────────────────────────────────────────────── */
+.db-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 12px;
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.db-card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-card);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+.db-card-title {
+    font-size: 13px; font-weight: 700;
+    color: var(--text-primary);
+    display: flex; align-items: center; gap: 8px;
+}
+.db-card-title i { color: var(--text-badge); font-size: 16px; }
+.db-card-body { padding: 20px; flex: 1; }
+.db-card-link { font-size: 12px; font-weight: 600; color: var(--text-badge); text-decoration: none; }
+.db-card-link:hover { opacity: 0.8; }
+
+/* ── Status Badge ────────────────────────────────────────────── */
+.db-status-badge {
+    padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; display: inline-block;
+}
+.db-status-badge.scheduled { background: rgba(99,102,241,0.12); color: #6366f1; border: 1px solid rgba(99,102,241,0.25); }
+
+/* ── Next Flight Card ────────────────────────────────────────── */
+.db-route-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--bg-header);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+.db-icao { font-size: 30px; font-weight: 900; color: var(--text-primary); letter-spacing: -1px; }
+.db-city { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-top: 4px; }
+.db-path-mid {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.db-path-num { font-size: 11px; font-weight: 700; color: var(--text-badge); }
+.db-path-line-wrap { width: 100%; display: flex; align-items: center; gap: 4px; }
+.db-path-line { flex: 1; border-top: 2px dashed var(--border-card); }
+.db-path-plane {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--text-badge); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+    box-shadow: 0 4px 12px rgba(81,140,229,0.35);
+}
+.db-path-time { font-size: 11px; font-weight: 700; color: var(--text-muted); }
+.db-flight-info { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.db-info-chip {
+    flex: 1; min-width: 100px; background: var(--bg-header);
+    border: 1px solid var(--border-card); border-radius: 8px; padding: 10px 14px;
+    font-size: 12px;
+}
+.db-info-chip-lbl { color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
+.db-info-chip-val { color: var(--text-primary); font-weight: 700; font-size: 14px; }
+.db-action-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 12px; border-radius: 8px;
+    background: var(--text-badge); color: #fff;
+    font-size: 13px; font-weight: 700; text-decoration: none;
+    border: none; cursor: pointer; transition: opacity .2s;
+}
+.db-action-btn:hover { opacity: 0.9; }
+
+/* ── PIREPs Table ────────────────────────────────────────────── */
+.db-pirep-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-card);
+    transition: background .15s; cursor: pointer;
+}
+.db-pirep-row:last-child { border-bottom: none; }
+.db-pirep-row:hover { margin: 0 -20px; padding: 12px 20px; background: var(--bg-header); border-radius: 6px; }
+.db-pirep-fn { font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
+.db-pirep-route { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+.db-pirep-time { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.db-badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.db-badge.approved { background: rgba(16,185,129,0.12); color: #10b981; }
+.db-badge.pending  { background: rgba(245,158,11,0.12); color: #f59e0b; }
+.db-badge.rejected { background: rgba(239,68,68,0.12); color: #ef4444; }
+
+/* ── Progression Bar ─────────────────────────────────────────── */
+.db-prog-wrap { margin-bottom: 20px; }
+.db-prog-labels { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; margin-bottom: 10px; }
+.db-prog-cur { color: var(--text-muted); }
+.db-prog-next { color: var(--text-badge); }
+.db-prog-bar {
+    height: 10px; background: var(--bg-header);
+    border-radius: 99px; overflow: hidden;
+    border: 1px solid var(--border-card);
+}
+.db-prog-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #518ce5, #6ea8f7); transition: width .6s ease; }
+.db-prog-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+.db-prog-hint { font-size: 12px; color: var(--text-muted); }
+.db-prog-unlock { font-size: 11px; font-weight: 700; background: var(--bg-badge); color: var(--text-badge); border: 1px solid var(--border-badge); padding: 3px 10px; border-radius: 4px; }
+
+/* ── Charts Row ──────────────────────────────────────────────── */
+.db-charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+@media (max-width: 900px) { .db-charts-grid { grid-template-columns: 1fr; } }
+
+/* ── Empty ───────────────────────────────────────────────────── */
+.db-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+.db-empty i { font-size: 40px; color: var(--border-card); display: block; margin-bottom: 12px; }
+.db-empty-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; }
+</style>
+@endpush
+
 @section('content')
-    <div class="max-w-7xl mx-auto space-y-6">
-        @if(auth()->user()->status === 'suspended')
-            <div class="card bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 p-5">
-                <div class="flex items-start gap-3">
-                    <svg class="w-6 h-6 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-                    </svg>
-                    <div>
-                        <p class="font-bold text-red-700 dark:text-red-400">Account Suspended</p>
-                        @if(auth()->user()->suspension_reason)
-                            <p class="text-sm text-red-600 dark:text-red-400 mt-1">{{ auth()->user()->suspension_reason }}</p>
+<div class="db-wrap">
+
+    @if(auth()->user()->status === 'suspended')
+        <div style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); border-radius: 10px; padding: 18px 20px; margin-bottom: 24px; display: flex; gap: 12px; align-items: flex-start;">
+            <i class="ph-fill ph-warning-circle" style="font-size: 22px; color: #ef4444; flex-shrink: 0;"></i>
+            <div>
+                <div style="font-weight: 700; color: #ef4444; margin-bottom: 4px;">Account Suspended</div>
+                @if(auth()->user()->suspension_reason)
+                    <div style="font-size: 13px; color: #ef4444; opacity: 0.85;">{{ auth()->user()->suspension_reason }}</div>
+                @endif
+                <div style="font-size: 12px; color: #ef4444; opacity: 0.65; margin-top: 6px;">Please contact staff to resolve this issue.</div>
+            </div>
+        </div>
+    @endif
+
+    {{-- ══ Welcome Banner ══ --}}
+    <div class="db-banner">
+        <div class="db-banner-left">
+            <div class="db-banner-label"><i class="ph-fill ph-hand-waving"></i> &nbsp;Welcome back</div>
+            <div class="db-banner-name">{{ auth()->user()->name }}</div>
+            <div class="db-banner-sub">
+                <i class="ph-fill ph-medal" style="margin-right:4px;"></i>{{ auth()->user()->rank?->name ?? 'Candidate' }}
+                &nbsp;&bull;&nbsp;
+                <i class="ph-fill ph-map-pin" style="margin-right:4px;"></i>{{ auth()->user()->last_location ?? 'No location' }}
+                &nbsp;&bull;&nbsp;
+                <i class="ph-fill ph-identification-card" style="margin-right:4px;"></i>{{ auth()->user()->pilot_id ?? 'N/A' }}
+            </div>
+        </div>
+        <div class="db-banner-right">
+            <div class="db-banner-badge">
+                <div class="db-banner-badge-val">{{ number_format(auth()->user()->total_hours, 1) }}</div>
+                <div class="db-banner-badge-lbl">Total Hours</div>
+            </div>
+            <div class="db-banner-badge">
+                <div class="db-banner-badge-val">{{ auth()->user()->total_flights }}</div>
+                <div class="db-banner-badge-lbl">Flights</div>
+            </div>
+            @php
+                $approvedCount = auth()->user()->pireps()->where('status','approved')->count();
+                $avgScore = auth()->user()->pireps()->where('status','approved')->avg('score');
+            @endphp
+            <div class="db-banner-badge">
+                <div class="db-banner-badge-val">{{ $approvedCount }}</div>
+                <div class="db-banner-badge-lbl">Approved</div>
+            </div>
+            <div class="db-banner-badge">
+                <div class="db-banner-badge-val">{{ $avgScore ? number_format($avgScore, 0) : '—' }}</div>
+                <div class="db-banner-badge-lbl">Avg Score</div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══ Stats Row ══ --}}
+    @php
+        $currentHours = auth()->user()->total_hours;
+        $nextRank = \App\Models\Rank::where('minimum_hours', '>', $currentHours)->orderBy('minimum_hours')->first();
+        $currentRankMin = auth()->user()->rank?->minimum_hours ?? 0;
+        $progress = ($nextRank && $nextRank->minimum_hours > $currentRankMin)
+            ? min(100, (($currentHours - $currentRankMin) / ($nextRank->minimum_hours - $currentRankMin)) * 100)
+            : 100;
+        $hoursToNext = $nextRank ? number_format($nextRank->minimum_hours - $currentHours, 1) : 0;
+    @endphp
+
+    <div class="db-stats">
+        <div class="db-stat">
+            <div class="db-stat-icon blue"><i class="ph-fill ph-clock"></i></div>
+            <div>
+                <div class="db-stat-val">{{ number_format(auth()->user()->total_hours, 1) }}h</div>
+                <div class="db-stat-lbl">Total Hours</div>
+            </div>
+        </div>
+        <div class="db-stat">
+            <div class="db-stat-icon green"><i class="ph-fill ph-airplane-tilt"></i></div>
+            <div>
+                <div class="db-stat-val">{{ auth()->user()->total_flights }}</div>
+                <div class="db-stat-lbl">Flights Logged</div>
+            </div>
+        </div>
+        <div class="db-stat">
+            <div class="db-stat-icon amber"><i class="ph-fill ph-medal"></i></div>
+            <div>
+                <div class="db-stat-val" style="font-size: 15px;">{{ auth()->user()->rank?->name ?? 'Candidate' }}</div>
+                <div class="db-stat-lbl">Current Rank</div>
+            </div>
+        </div>
+        <div class="db-stat">
+            <div class="db-stat-icon indigo"><i class="ph-fill ph-map-pin"></i></div>
+            <div>
+                <div class="db-stat-val" style="font-family: monospace;">{{ auth()->user()->last_location ?? '—' }}</div>
+                <div class="db-stat-lbl">Location</div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══ Next Flight + Recent PIREPs ══ --}}
+    <div class="db-main-grid">
+
+        {{-- Next Flight --}}
+        <div class="db-card">
+            <div class="db-card-header">
+                <div class="db-card-title">
+                    <i class="ph-fill ph-calendar-check"></i> Next Flight
+                </div>
+                <span class="db-status-badge scheduled">Scheduled</span>
+            </div>
+            <div class="db-card-body">
+                @php $nextBid = auth()->user()->bids()->with('schedule')->latest()->first(); @endphp
+                @if($nextBid && $nextBid->schedule)
+                    <div class="db-route-wrap">
+                        <div style="text-align: center;">
+                            <div class="db-icao">{{ $nextBid->schedule->departure }}</div>
+                            <div class="db-city">{{ $nextBid->schedule->departure }}</div>
+                        </div>
+                        <div class="db-path-mid">
+                            <div class="db-path-num">{{ $nextBid->schedule->flight_number }}</div>
+                            <div class="db-path-line-wrap">
+                                <div class="db-path-line"></div>
+                                <div class="db-path-plane"><i class="ph-fill ph-airplane-in-flight"></i></div>
+                                <div class="db-path-line"></div>
+                            </div>
+                            <div class="db-path-time">{{ $nextBid->schedule->flight_time }}h</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="db-icao">{{ $nextBid->schedule->arrival }}</div>
+                            <div class="db-city">{{ $nextBid->schedule->arrival }}</div>
+                        </div>
+                    </div>
+
+                    <div class="db-flight-info">
+                        <div class="db-info-chip">
+                            <div class="db-info-chip-lbl">Flight</div>
+                            <div class="db-info-chip-val">{{ $nextBid->schedule->flight_number }}</div>
+                        </div>
+                        <div class="db-info-chip">
+                            <div class="db-info-chip-lbl">Duration</div>
+                            <div class="db-info-chip-val">{{ $nextBid->schedule->flight_time }}h</div>
+                        </div>
+                        @if($nextBid->schedule->aircraft_type)
+                        <div class="db-info-chip">
+                            <div class="db-info-chip-lbl">Aircraft</div>
+                            <div class="db-info-chip-val">{{ $nextBid->schedule->aircraft_type }}</div>
+                        </div>
                         @endif
-                        <p class="text-xs text-red-500 mt-2">Please contact staff to resolve this issue.</p>
+                    </div>
+
+                    <a href="{{ route('simbrief') }}" wire:navigate class="db-action-btn">
+                        <i class="ph-bold ph-paper-plane-tilt"></i> View Briefing
+                    </a>
+                @else
+                    <div class="db-empty">
+                        <i class="ph-fill ph-calendar-x"></i>
+                        <div class="db-empty-title">No upcoming flights</div>
+                        <a href="{{ route('flights') }}" wire:navigate class="db-action-btn">
+                            <i class="ph-bold ph-plus"></i> Book a Flight
+                        </a>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        {{-- Recent PIREPs --}}
+        <div class="db-card">
+            <div class="db-card-header">
+                <div class="db-card-title">
+                    <i class="ph-fill ph-clock-counter-clockwise"></i> Recent PIREPs
+                </div>
+                <a href="{{ route('my-pireps') }}" wire:navigate class="db-card-link">View all →</a>
+            </div>
+            <div class="db-card-body">
+                @php $recentPireps = auth()->user()->pireps()->latest()->take(5)->get(); @endphp
+                @if($recentPireps->count() > 0)
+                    @foreach($recentPireps as $pirep)
+                        <div class="db-pirep-row" onclick="window.location.href='{{ route('my-pireps') }}'">
+                            <div>
+                                <div class="db-pirep-fn">{{ $pirep->flight_number }}</div>
+                                <div class="db-pirep-route">{{ $pirep->departure }} &rarr; {{ $pirep->arrival }} &bull; {{ $pirep->created_at->diffForHumans() }}</div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div class="db-pirep-time">{{ $pirep->flight_time }}h</div>
+                                <span class="db-badge {{ $pirep->status }}">{{ ucfirst($pirep->status) }}</span>
+                            </div>
+                        </div>
+                    @endforeach
+                @else
+                    <div class="db-empty">
+                        <i class="ph-fill ph-airplane-tilt"></i>
+                        <div class="db-empty-title">No PIREPs submitted yet</div>
+                        <a href="{{ route('file-pirep') }}" wire:navigate class="db-action-btn">File a PIREP</a>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    {{-- ══ Career Progression ══ --}}
+    <div class="db-card" style="margin-bottom: 20px;">
+        <div class="db-card-header">
+            <div class="db-card-title">
+                <i class="ph-fill ph-chart-line-up"></i> Career Progression
+            </div>
+            <span style="font-size: 12px; font-weight: 600; color: var(--text-muted);">{{ number_format($progress, 1) }}% complete</span>
+        </div>
+        <div class="db-card-body">
+            @if($nextRank)
+                <div class="db-prog-wrap">
+                    <div class="db-prog-labels">
+                        <span class="db-prog-cur"><i class="ph-fill ph-medal" style="margin-right: 4px;"></i>{{ auth()->user()->rank?->name ?? 'Candidate' }}</span>
+                        <span class="db-prog-next">{{ $nextRank->name }} <i class="ph-fill ph-arrow-right" style="margin-left: 2px;"></i></span>
+                    </div>
+                    <div class="db-prog-bar">
+                        <div class="db-prog-fill" style="width: {{ $progress }}%;"></div>
+                    </div>
+                    <div class="db-prog-footer">
+                        <span class="db-prog-hint">
+                            <i class="ph-fill ph-clock" style="margin-right: 4px;"></i>
+                            {{ $hoursToNext }} hours to next rank
+                        </span>
+                        @if($nextRank->allowed_categories)
+                            @php $unlocks = array_diff(explode(',', $nextRank->allowed_categories), explode(',', auth()->user()->rank?->allowed_categories ?? '')); @endphp
+                            @if(count($unlocks) > 0)
+                                <span class="db-prog-unlock">Unlocks: {{ implode(', ', $unlocks) }}</span>
+                            @endif
+                        @endif
                     </div>
                 </div>
-            </div>
-        @endif
 
-        {{-- Welcome Header --}}
-        <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Welcome back, {{ auth()->user()->name }}</h1>
-            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Here's your flight operations overview.</p>
+                {{-- Rank milestones strip --}}
+                @php $allRanks = \App\Models\Rank::orderBy('minimum_hours')->get(); @endphp
+                @if($allRanks->count() > 0)
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    @foreach($allRanks as $r)
+                        @php $reached = $currentHours >= $r->minimum_hours; @endphp
+                        <div style="flex: 1; min-width: 80px; text-align: center; padding: 10px 8px; border-radius: 8px; border: 1px solid var(--border-card); background: {{ $reached ? 'rgba(81,140,229,0.1)' : 'var(--bg-header)' }};">
+                            <div style="font-size: 18px; color: {{ $reached ? 'var(--text-badge)' : 'var(--text-muted)' }};">
+                                <i class="ph-fill {{ $reached ? 'ph-medal' : 'ph-lock' }}"></i>
+                            </div>
+                            <div style="font-size: 11px; font-weight: 700; color: {{ $reached ? 'var(--text-primary)' : 'var(--text-muted)' }}; margin-top: 4px;">{{ $r->name }}</div>
+                            <div style="font-size: 10px; color: var(--text-muted);">{{ $r->minimum_hours }}h</div>
+                        </div>
+                    @endforeach
+                </div>
+                @endif
+            @else
+                <div class="db-empty">
+                    <i class="ph-fill ph-star"></i>
+                    <div class="db-empty-title">Maximum rank achieved!</div>
+                    <div style="font-size: 13px;">You have reached the highest rank in the airline.</div>
+                </div>
+            @endif
         </div>
+    </div>
 
-        {{-- Stats Grid --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="stat-card">
-                <span class="stat-label">Total Hours</span>
-                <span class="stat-value">{{ number_format(auth()->user()->total_hours, 1) }}</span>
+    {{-- ══ Charts ══ --}}
+    <div class="db-charts-grid">
+        <div class="db-card">
+            <div class="db-card-header">
+                <div class="db-card-title"><i class="ph-fill ph-chart-pie-slice"></i> PIREP Status</div>
             </div>
-            <div class="stat-card">
-                <span class="stat-label">Flights Logged</span>
-                <span class="stat-value">{{ auth()->user()->total_flights }}</span>
-            </div>
-            <div class="stat-card">
-                <span class="stat-label">Rank</span>
-                <span class="stat-value">{{ auth()->user()->rank?->name ?? 'Candidate' }}</span>
-            </div>
-            <div class="stat-card">
-                <span class="stat-label">Location</span>
-                <span class="stat-value">{{ auth()->user()->last_location }}</span>
-            </div>
-        </div>
-
-        {{-- Charts --}}
-        <div class="grid lg:grid-cols-2 gap-4">
-            <div class="card p-5">
-                <h3 class="text-sm font-semibold text-slate-900 dark:text-white mb-3">My PIREP Status</h3>
-                <div class="relative h-64">
+            <div class="db-card-body">
+                <div style="height: 220px; position: relative;">
                     <canvas id="myPirepChart"></canvas>
                 </div>
             </div>
-            <div class="card p-5">
-                <h3 class="text-sm font-semibold text-slate-900 dark:text-white mb-3">Recent Scores</h3>
-                <div class="relative h-64">
+        </div>
+
+        <div class="db-card">
+            <div class="db-card-header">
+                <div class="db-card-title"><i class="ph-fill ph-chart-bar"></i> Recent Flight Scores</div>
+            </div>
+            <div class="db-card-body">
+                <div style="height: 220px; position: relative;">
                     <canvas id="myScoresChart"></canvas>
                 </div>
             </div>
         </div>
-
-        {{-- Next Flight + Recent PIREPs --}}
-        <div class="grid lg:grid-cols-2 gap-6">
-            <div class="card p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Next Flight</h2>
-                    <span class="badge-info">Scheduled</span>
-                </div>
-                @php
-                    $nextBid = auth()->user()->bids()->with('schedule')->latest()->first();
-                @endphp
-                @if($nextBid && $nextBid->schedule)
-                    <div class="space-y-3">
-                        <div class="flex items-center gap-4">
-                            <div class="text-center">
-                                <p class="text-3xl font-bold text-slate-900 dark:text-white">{{ substr($nextBid->schedule->departure, 0, 4) }}</p>
-                                <p class="text-xs text-slate-500">{{ $nextBid->schedule->departure }}</p>
-                            </div>
-                            <div class="flex-1 flex items-center gap-2">
-                                <div class="h-px flex-1 bg-slate-200 dark:bg-slate-700"></div>
-                                <svg class="w-5 h-5 text-crimson-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
-                                </svg>
-                                <div class="h-px flex-1 bg-slate-200 dark:bg-slate-700"></div>
-                            </div>
-                            <div class="text-center">
-                                <p class="text-3xl font-bold text-slate-900 dark:text-white">{{ substr($nextBid->schedule->arrival, 0, 4) }}</p>
-                                <p class="text-xs text-slate-500">{{ $nextBid->schedule->arrival }}</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
-                            <span>{{ $nextBid->schedule->flight_number }}</span>
-                            <span>{{ $nextBid->schedule->flight_time }} hrs</span>
-                        </div>
-                        <a href="{{ route('simbrief') }}" wire:navigate class="btn-primary w-full mt-2">View Briefing</a>
-                    </div>
-                @else
-                    <div class="text-center py-8 text-slate-400 dark:text-slate-500">
-                        <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/>
-                        </svg>
-                        <p>No upcoming flights</p>
-                        <a href="{{ route('flights') }}" wire:navigate class="btn-primary mt-4 inline-flex">Book a Flight</a>
-                    </div>
-                @endif
-            </div>
-
-            <div class="card p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Recent PIREPs</h2>
-                    <a href="{{ route('my-pireps') }}" wire:navigate class="text-sm text-crimson-600 dark:text-crimson-400 hover:underline">View all</a>
-                </div>
-                @php
-                    $recentPireps = auth()->user()->pireps()->latest()->take(5)->get();
-                @endphp
-                @if($recentPireps->count() > 0)
-                    <div class="space-y-3">
-                        @foreach($recentPireps as $pirep)
-                            <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                                <div class="flex items-center gap-3">
-                                    <div>
-                                        <p class="text-sm font-medium text-slate-900 dark:text-white">{{ $pirep->flight_number }}</p>
-                                        <p class="text-xs text-slate-500">{{ $pirep->departure }} → {{ $pirep->arrival }}</p>
-                                    </div>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-sm font-medium text-slate-900 dark:text-white">{{ $pirep->flight_time }}h</p>
-                                    <p class="text-xs text-slate-500">{{ $pirep->landing_rate }} fpm</p>
-                                </div>
-                                <div>
-                                    @if($pirep->status === 'approved')
-                                        <span class="badge-success">Approved</span>
-                                    @elseif($pirep->status === 'pending')
-                                        <span class="badge-warning">Pending</span>
-                                    @else
-                                        <span class="badge-danger">Rejected</span>
-                                    @endif
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                @else
-                    <div class="text-center py-8 text-slate-400 dark:text-slate-500">
-                        <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
-                        </svg>
-                        <p>No PIREPs submitted yet</p>
-                    </div>
-                @endif
-            </div>
-        </div>
-
-        {{-- Progression Section --}}
-        <div class="card p-6">
-            <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">Progression</h2>
-            @php
-                $currentHours = auth()->user()->total_hours;
-                $nextRank = \App\Models\Rank::where('minimum_hours', '>', $currentHours)->orderBy('minimum_hours')->first();
-            @endphp
-            @if($nextRank)
-                @php
-                    $currentRankMin = auth()->user()->rank?->minimum_hours ?? 0;
-                    $progress = $nextRank->minimum_hours > $currentRankMin
-                        ? min(100, (($currentHours - $currentRankMin) / ($nextRank->minimum_hours - $currentRankMin)) * 100)
-                        : 0;
-                @endphp
-                <div class="space-y-2">
-                    <div class="flex justify-between text-sm">
-                        <span class="text-slate-600 dark:text-slate-400">{{ auth()->user()->rank?->name ?? 'Candidate' }}</span>
-                        <span class="text-slate-600 dark:text-slate-400">{{ $nextRank->name }}</span>
-                    </div>
-                    <div class="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                        <div class="h-full bg-crimson-500 rounded-full transition-all duration-500" style="width: {{ $progress }}%"></div>
-                    </div>
-                    <p class="text-xs text-slate-500">{{ number_format($nextRank->minimum_hours - $currentHours, 1) }} hours to next rank</p>
-                    @if($nextRank->allowed_categories)
-                        @php $unlocks = array_diff(explode(',', $nextRank->allowed_categories), explode(',', auth()->user()->rank?->allowed_categories ?? '')); @endphp
-                        @if(count($unlocks) > 0)
-                            <p class="text-xs text-crimson-600 dark:text-crimson-400 font-medium mt-1">Unlocks: {{ implode(', ', $unlocks) }}</p>
-                        @endif
-                    @endif
-                </div>
-            @else
-                <p class="text-slate-500 dark:text-slate-400 text-sm">Maximum rank achieved!</p>
-            @endif
-        </div>
     </div>
+
+</div>
 @endsection
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
-document.addEventListener('livewire:initialized', function () {
+document.addEventListener('DOMContentLoaded', function () {
     const pireps = @json($chartPireps);
 
     const statusCounts = { approved: 0, pending: 0, rejected: 0 };
@@ -207,6 +559,11 @@ document.addEventListener('livewire:initialized', function () {
         scoreLabels.push(p.flight_number);
     });
 
+    const isDark = document.documentElement.classList.contains('dark');
+    const textColor = isDark ? '#94a3b8' : '#6b7280';
+    const gridColor = isDark ? '#2e3350' : '#e5e7eb';
+
+    // Doughnut
     new Chart(document.getElementById('myPirepChart'), {
         type: 'doughnut',
         data: {
@@ -215,15 +572,22 @@ document.addEventListener('livewire:initialized', function () {
                 data: [statusCounts.approved || 0, statusCounts.pending || 0, statusCounts.rejected || 0],
                 backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
                 borderWidth: 0,
+                hoverOffset: 8,
             }]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, pointStyle: 'circle' } } }
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: textColor, padding: 16, usePointStyle: true, pointStyle: 'circle', font: { size: 12, weight: '600' } }
+                }
+            },
+            cutout: '68%'
         }
     });
 
+    // Bar
     if (scores.length) {
         new Chart(document.getElementById('myScoresChart'), {
             type: 'bar',
@@ -232,18 +596,24 @@ document.addEventListener('livewire:initialized', function () {
                 datasets: [{
                     label: 'Score',
                     data: scores,
-                    backgroundColor: scores.map(s => s >= 80 ? '#10b981' : s >= 60 ? '#f59e0b' : '#ef4444'),
-                    borderRadius: 4,
+                    backgroundColor: scores.map(s => s >= 90 ? '#10b981' : s >= 70 ? '#f59e0b' : '#ef4444'),
+                    borderRadius: 6,
                     borderSkipped: false,
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    y: { beginAtZero: true, max: 100, ticks: { stepSize: 20 } },
-                    x: { grid: { display: false } }
+                    y: {
+                        beginAtZero: true, max: 100,
+                        ticks: { stepSize: 25, color: textColor, font: { size: 11 } },
+                        grid: { color: gridColor }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: textColor, font: { size: 11 } }
+                    }
                 }
             }
         });

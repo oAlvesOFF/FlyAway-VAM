@@ -117,6 +117,31 @@ Route::middleware('auth')->group(function () {
         ]);
     })->name('pireps.export');
 
+    // SimBrief OFP PDF proxy – streams the PDF so it can be embedded in an iframe
+    Route::get('/simbrief/ofp-pdf', function (Request $request) {
+        $url = $request->query('url', '');
+
+        // Security: only allow simbrief.com URLs
+        $parsed = parse_url($url);
+        $host = strtolower($parsed['host'] ?? '');
+        if (!$url || !str_ends_with($host, 'simbrief.com')) {
+            abort(403, 'Invalid PDF URL.');
+        }
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(30)->get($url);
+            if (!$response->successful()) abort(404);
+
+            return response($response->body(), 200, [
+                'Content-Type'        => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="OFP.pdf"',
+                'X-Frame-Options'     => 'SAMEORIGIN',
+            ]);
+        } catch (\Exception $e) {
+            abort(500, 'Could not fetch PDF.');
+        }
+    })->name('simbrief.ofp-pdf');
+
     Route::post('/notifications/read-all', function (Request $request) {
         $request->user()->unreadNotifications->markAsRead();
         return response()->json(['success' => true]);

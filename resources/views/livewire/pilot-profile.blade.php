@@ -121,7 +121,6 @@ new class extends Component {
             'avgLanding'   => (int)($pirepsQuery->avg('landing_rate') ?? 0),
             'dayStreak'    => $dayStreak,
             'bestStreak'   => $bestStreak,
-            'balance'      => 16.4, // mock balance
             'joined'       => $this->user->created_at->diffForHumans(['parts' => 1]),
             'flightsYear'  => $pirepsQuery->where('created_at', '>=', now()->subYear())->count(),
         ];
@@ -150,7 +149,7 @@ new class extends Component {
                 ];
             }
         }
-        
+
         arsort($destinations);
         $destinations = array_slice($destinations, 0, 6);
         if(count($destinations) < 6) {
@@ -205,764 +204,844 @@ new class extends Component {
     }
 }; ?>
 
-<div class="pp-container" x-data="{ activeTab: @entangle('activeTab') }">
+@push('styles')
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+/* ══ Pilot Profile — Dynamic Theme Colors ═════════════════════ */
+:root {
+    --bg-page: #f8f9fa;
+    --bg-card: #ffffff;
+    --bg-header: #f1f3f5;
+    --border-card: #e9ebec;
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-muted: #868e96;
+    --bg-badge: rgba(81, 140, 229, 0.1);
+    --border-badge: rgba(81, 140, 229, 0.25);
+    --text-badge: #518ce5;
+    --bg-search: #ffffff;
+    --border-search: #ced4da;
+    --text-search: #212529;
+    --shadow-card: 0 2px 4px rgba(0, 0, 0, .04);
+}
 
-    @push('styles')
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        /* Base Container */
-        .pp-container {
-            min-height: 100vh;
-            background-color: #050507; /* Very dark background to match image */
-            color: #ffffff;
-            font-family: 'Inter', system-ui, sans-serif;
-            padding: 24px;
-        }
+.dark {
+    --bg-page: #1a1d2e;
+    --bg-card: #2b2f3e;
+    --bg-header: #23263a;
+    --border-card: #3a3f54;
+    --text-primary: #e2e8f0;
+    --text-secondary: #a0a8c0;
+    --text-muted: #6b7280;
+    --bg-badge: rgba(81, 140, 229, 0.18);
+    --border-badge: rgba(81, 140, 229, 0.35);
+    --text-badge: #518ce5;
+    --bg-search: #23263a;
+    --border-search: #3a3f54;
+    --text-search: #e2e8f0;
+    --shadow-card: none;
+}
 
-        /* SVG Icons */
-        .icon-sm { width: 14px; height: 14px; display: inline-block; }
-        .icon-md { width: 16px; height: 16px; display: inline-block; }
-        .icon-lg { width: 24px; height: 24px; display: inline-block; }
+body, main { background: var(--bg-page) !important; }
 
-        /* Custom Cards */
-        .custom-card {
-            background-color: #0a0a0c;
-            border: 1px solid #1f1f22;
-            border-radius: 8px;
-        }
-        .card-header-title {
-            font-size: 10px;
-            font-weight: 700;
-            color: #fff;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-        }
+.dvap-wrap {
+    display: grid;
+    grid-template-columns: 310px 1fr;
+    gap: 20px;
+    align-items: start;
+}
+@media (max-width: 900px) {
+    .dvap-wrap { grid-template-columns: 1fr; }
+}
 
-        /* Layouts */
-        .row-split {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            margin-top: 24px;
-        }
-        @media (min-width: 1024px) {
-            .row-split { flex-direction: row; }
-        }
-        .col-left {
-            width: 100%;
-        }
-        @media (min-width: 1024px) {
-            .col-left { width: 320px; flex-shrink: 0; }
-        }
-        .col-right {
-            flex: 1;
-            min-width: 0;
-        }
+/* ── Dark/Light card ────────────────────────────────────────── */
+.dv-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 8px;
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+}
+.dv-card-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-card);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.dv-card-body { padding: 16px; }
 
-        /* Stats Grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            row-gap: 32px;
-        }
-        .stat-val {
-            font-size: 22px;
-            font-weight: 700;
-            color: #fff;
-            line-height: 1.2;
-        }
-        .stat-val-red {
-            color: #ef4444;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-        }
-        .stat-lbl {
-            font-size: 10px;
-            color: #888;
-            text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            margin-top: 6px;
-        }
+/* ── Left sidebar ───────────────────────────────────────────── */
+.dv-sidebar { display: flex; flex-direction: column; gap: 16px; }
 
-        /* Heatmap */
-        .heat-cell {
-            width: 11px; height: 11px;
-            border-radius: 2px;
-            background: #1c1c1c;
-            flex-shrink: 0;
-            display: inline-block;
-        }
-        .heat-cell[data-level="1"] { background: #5c0b0b; }
-        .heat-cell[data-level="2"] { background: #8b0e0e; }
-        .heat-cell[data-level="3"] { background: #b91c1c; }
-        .heat-cell[data-level="4"] { background: #ef4444; }
+.dv-avatar-box {
+    background: var(--bg-header);
+    border: 1px solid var(--border-card);
+    border-radius: 8px;
+    padding: 20px 16px;
+    text-align: center;
+}
+.dv-avatar {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #518ce5, #2f5abf);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; font-weight: 700; color: #fff;
+    margin: 0 auto 12px;
+    border: 3px solid var(--border-card);
+}
+.dv-pilot-name {
+    font-size: 14px; font-weight: 700; color: var(--text-primary);
+    margin: 0 0 4px;
+}
+.dv-pilot-rank {
+    font-size: 12px; color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+}
 
-        /* Tabs */
-        .c-tab {
-            display: flex; align-items: center; gap: 8px;
-            padding: 12px 0;
-            margin-right: 24px;
-            color: #888;
-            font-size: 12px;
-            font-weight: 500;
-            border-bottom: 2px solid transparent;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: transparent;
-            border-top: none; border-left: none; border-right: none;
-        }
-        .c-tab.active {
-            color: #fff;
-            border-bottom-color: #ef4444;
-        }
-        .c-tab:hover:not(.active) { color: #ccc; }
+.dv-pilot-id-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(16,185,129,.15);
+    border: 1px solid rgba(16,185,129,.3);
+    color: #10b981;
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 12px; font-weight: 700;
+    margin: 12px 0;
+    width: 100%;
+    justify-content: center;
+}
 
-        /* Table */
-        .pp-table-container {
-            width: 100%;
-            overflow-x: auto;
-        }
-        .pp-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .pp-table th {
-            font-size: 9px;
-            font-weight: 700;
-            color: #888;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-            padding: 12px 16px;
-            border-bottom: 1px solid #1f1f22;
-            background: #0a0a0c;
-            text-align: left;
-        }
-        .pp-table td {
-            font-size: 11px;
-            padding: 12px 16px;
-            border-bottom: 1px solid #1f1f22;
-        }
-        .pp-table tr:hover { background: #111113; }
+.dv-info-list { list-style: none; margin: 0; padding: 0; }
+.dv-info-list li {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-card);
+    font-size: 12px;
+}
+.dv-info-list li:last-child { border-bottom: 0; }
+.dv-info-label { color: var(--text-muted); }
+.dv-info-value { color: var(--text-primary); font-weight: 600; text-align: right; }
+.dv-airport-badge {
+    display: inline-flex; align-items: center;
+    background: var(--bg-badge);
+    border: 1px solid var(--border-badge);
+    color: var(--text-badge);
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 700;
+}
 
-        /* Map */
-        .leaflet-container { background: #0b0b0c !important; }
-        .leaflet-bar a { background-color: #1a1a1c !important; color: #888 !important; border-color: #333 !important; }
-        .leaflet-bar a:hover { background-color: #2a2a2c !important; color: #fff !important; }
+/* ── Stats widgets (2×3 grid) ───────────────────────────────── */
+.dv-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+.dv-stat-widget {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 8px;
+    box-shadow: var(--shadow-card);
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+}
+.dv-stat-icon {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: var(--bg-badge);
+    border: 1px solid var(--border-badge);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-badge); font-size: 18px; flex-shrink: 0;
+}
+.dv-stat-val { font-size: 16px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+.dv-stat-val.green { color: #10b981; }
+.dv-stat-lbl { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 
-        .map-stats-strip {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            background: #0a0a0c;
-            border-top: 1px solid #1f1f22;
-            padding: 16px;
-            text-align: center;
-        }
-        @media (min-width: 768px) {
-            .map-stats-strip { grid-template-columns: repeat(7, 1fr); }
-        }
+/* ── Tabs ───────────────────────────────────────────────────── */
+.dv-tabs {
+    display: flex; border-bottom: 1px solid var(--border-card);
+    padding: 0; gap: 0; overflow-x: auto;
+}
+.dv-tab {
+    padding: 12px 20px;
+    font-size: 13px; font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    cursor: pointer;
+    background: transparent;
+    border-top: none; border-left: none; border-right: none;
+    transition: all .18s; white-space: nowrap;
+    display: flex; align-items: center; gap: 6px;
+}
+.dv-tab:hover:not(.active) { color: var(--text-secondary); }
+.dv-tab.active { color: var(--text-badge); border-bottom-color: var(--text-badge); }
 
-        /* Bottom Charts Grid */
-        .bottom-charts {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 24px;
-            margin-top: 24px;
-        }
-        @media (min-width: 768px) { .bottom-charts { grid-template-columns: repeat(2, 1fr); } }
-        @media (min-width: 1280px) { .bottom-charts { grid-template-columns: repeat(4, 1fr); } }
+/* ── Biography ──────────────────────────────────────────────── */
+.dv-bio {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 8px;
+    box-shadow: var(--shadow-card);
+    padding: 16px;
+    font-size: 13px; line-height: 1.6; color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+.dv-bio h5 {
+    font-size: 13px; font-weight: 700; color: var(--text-primary);
+    margin: 0 0 10px; display: flex; align-items: center; gap: 6px;
+}
 
-        .chart-wrapper {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 128px;
-        }
-        .chart-circle {
-            position: absolute;
-            width: 128px;
-            height: 128px;
-            border-radius: 50%;
-        }
-        .chart-text {
-            position: relative;
-            z-index: 10;
-            text-align: center;
-        }
-    </style>
-    @endpush
+/* ── PIREPs table ───────────────────────────────────────────── */
+.dv-table { width: 100%; border-collapse: collapse; }
+.dv-table th {
+    padding: 9px 12px; text-align: left;
+    font-size: 11px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: .05em;
+    border-bottom: 1px solid var(--border-card);
+    background: var(--bg-header);
+}
+.dv-table td {
+    padding: 11px 12px; font-size: 13px;
+    color: var(--text-secondary); border-bottom: 1px solid var(--border-card);
+    vertical-align: middle;
+}
+.dv-table tbody tr:last-child td { border-bottom: 0; }
+.dv-table tbody tr:hover td { background: rgba(81, 140, 229, .02); }
+.dv-icao {
+    background: var(--bg-badge);
+    border: 1px solid var(--border-badge);
+    color: var(--text-badge);
+    padding: 2px 7px; border-radius: 4px;
+    font-size: 12px; font-weight: 700;
+    font-family: monospace;
+}
 
-    {{-- HEADER --}}
-    <div style="margin-bottom: 24px;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="width: 64px; height: 64px; border-radius: 8px; background-color: #2a1111; display: flex; align-items: center; justify-content: center; color: #d9534f; font-size: 20px; font-weight: bold; border: 1px solid #331111;">
-                {{ strtoupper(substr($user->name, 0, 2)) }}
-            </div>
-            <div>
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <h1 style="font-size: 20px; font-weight: bold; color: #fff; margin: 0;">
-                        {{ $user->pilot_id ?? 'CID' }} | {{ $user->name }}
-                    </h1>
-                    @if($user->status === 'active')
-                        <span style="background-color: #10b981; color: #fff; font-size: 9px; font-weight: bold; text-transform: uppercase; padding: 2px 8px; border-radius: 4px;">Active</span>
-                    @else
-                        <span style="background-color: #f59e0b; color: #fff; font-size: 9px; font-weight: bold; text-transform: uppercase; padding: 2px 8px; border-radius: 4px;">{{ ucfirst($user->status) }}</span>
-                    @endif
+/* ── Awards grid ────────────────────────────────────────────── */
+.dv-awards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+}
+.dv-award-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform .2s, box-shadow .2s;
+}
+.dv-award-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.12);
+}
+.dark .dv-award-card:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,.3);
+}
+.dv-award-name {
+    text-align: center;
+    font-size: 13px; font-weight: 700; color: var(--text-primary);
+    padding: 10px 12px 8px;
+}
+.dv-award-img {
+    width: 100%; aspect-ratio: 1/1;
+    background: var(--bg-header);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--border-card); font-size: 13px;
+}
+.dv-award-img img {
+    width: 100%; height: 100%; object-fit: cover;
+}
+.dv-award-footer {
+    background: var(--bg-header);
+    padding: 8px 12px; text-align: center;
+    font-size: 11px; color: var(--text-muted);
+}
+.dv-award-footer strong { display: block; color: var(--text-secondary); margin-bottom: 2px; }
+
+/* ── Passport stamps ────────────────────────────────────────── */
+.dv-stamps-grid {
+    display: flex; flex-wrap: wrap; gap: 8px;
+}
+.dv-stamp {
+    background: var(--bg-header);
+    border: 1.5px dashed var(--border-card);
+    border-radius: 6px; padding: 8px 12px;
+    text-align: center; min-width: 60px;
+}
+.dv-stamp-code { font-size: 13px; font-weight: 700; color: var(--text-primary); letter-spacing: 1px; }
+.dv-stamp-count { font-size: 10px; font-weight: 700; color: var(--text-badge); margin-top: 2px; }
+
+/* ── Pagination ─────────────────────────────────────────────── */
+.dv-page-btn {
+    padding: 5px 14px; border-radius: 5px; font-size: 12px; font-weight: 600;
+    border: 1px solid var(--border-card); cursor: pointer; transition: all .15s;
+    background: var(--bg-header); color: var(--text-secondary);
+}
+.dv-page-btn:hover:not(:disabled) { background: var(--text-badge); color: #fff; border-color: var(--text-badge); }
+.dv-page-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Map + Radar Grid ───────────────────────────────────────── */
+.dv-map-radar-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 992px) {
+    .dv-map-radar-grid { grid-template-columns: 2fr 1fr; }
+}
+#dvFlightMap { height: 280px; }
+.leaflet-container { background: var(--bg-page) !important; }
+.leaflet-bar a { background: var(--bg-card) !important; color: var(--text-secondary) !important; border-color: var(--border-card) !important; }
+.leaflet-bar a:hover { background: var(--bg-header) !important; color: var(--text-primary) !important; }
+</style>
+
+@endpush
+
+<div x-data="{ activeTab: @entangle('activeTab') }" style="background:var(--bg-page);min-height:100vh;">
+    <div style="padding:20px;max-width:1400px;margin:0 auto;">
+        <div class="dvap-wrap">
+            <!-- LEFT SIDEBAR -->
+            <div class="dv-sidebar">
+                {{-- Avatar + name --}}
+                <div class="dv-avatar-box">
+                    <div class="dv-avatar">
+                        @if($user->avatar)
+                            <img src="{{ Storage::url($user->avatar) }}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+                        @else
+                            {{ strtoupper(substr($user->name,0,2)) }}
+                        @endif
+                    </div>
+                    <p class="dv-pilot-name">
+                        @if($user->rank?->name)
+                            {{ $user->rank->name }}, {{ $user->name }}
+                        @else
+                            {{ $user->name }}
+                        @endif
+                    </p>
+                    <p class="dv-pilot-rank">
+                        <i class="ph-fill ph-flag" style="color:var(--text-badge);"></i>
+                        {{ $user->country ?? 'International' }}
+                    </p>
+
+                    <div class="dv-pilot-id-badge">
+                        <i class="ph-fill ph-check-circle"></i>
+                        Pilot ID: {{ $user->pilot_id }}
+                    </div>
+
+                    {{-- Rank Image or Pips --}}
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
+                        <span style="font-size:11px;color:var(--text-muted);">Rank</span>
+                        @if($user->rank?->image)
+                            <img src="{{ Str::startsWith($user->rank->image, ['http://', 'https://', '/']) ? $user->rank->image : Storage::url($user->rank->image) }}"
+                                 alt=""
+                                 style="height:20px;max-width:80px;object-fit:contain;border-radius:2px;">
+                        @else
+                            <span style="display:flex;gap:3px;">
+                                @for($i=0;$i<4;$i++)
+                                    <span style="width:8px;height:20px;border-radius:2px;background:{{ $i < ($user->rank?->level ?? 1) ? 'var(--text-badge)' : 'var(--border-card)' }};"></span>
+                                @endfor
+                            </span>
+                        @endif
+                    </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
-                    <svg class="icon-sm" style="color: #ef4444;" viewBox="0 0 24 24" fill="currentColor"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>
-                    <svg class="icon-sm" style="color: #6b7280;" viewBox="0 0 24 24" fill="currentColor"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>
-                    <span style="font-size: 12px; color: #9ca3af;">{{ $user->rank?->name ?? 'Pilot' }}</span>
-                </div>
-            </div>
-        </div>
 
-        {{-- TABS --}}
-        <div style="display: flex; border-bottom: 1px solid #1f1f22; margin-top: 24px; overflow-x: auto;">
-            <button wire:click="$set('activeTab', 'Flights')" class="c-tab {{ $activeTab === 'Flights' ? 'active' : '' }}">
-                <svg class="icon-md" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25z"/></svg> 
-                Flights
-            </button>
-            <button wire:click="$set('activeTab', 'Awards')" class="c-tab {{ $activeTab === 'Awards' ? 'active' : '' }}">
-                <svg class="icon-md" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
-                Awards <span style="background: #1a1a1a; color: #9ca3af; font-size: 10px; padding: 2px 6px; border-radius: 4px;">{{ count($user->achievements) }}</span>
-            </button>
-            <button wire:click="$set('activeTab', 'Tours')" class="c-tab {{ $activeTab === 'Tours' ? 'active' : '' }}">
-                <svg class="icon-md" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.25 10.5a7.25 7.25 0 1114.5 0 7.25 7.25 0 01-14.5 0z M9.75 14.5a4.25 4.25 0 118.5 0 4.25 4.25 0 01-8.5 0z"/></svg>
-                Tours
-            </button>
-            <button wire:click="$set('activeTab', 'Passport')" class="c-tab {{ $activeTab === 'Passport' ? 'active' : '' }}">
-                <svg class="icon-md" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-4m-8-2l8-8m0 0v4m0-4h-4"/></svg>
-                Passport
-            </button>
-            <button wire:click="$set('activeTab', 'Logbook')" class="c-tab {{ $activeTab === 'Logbook' ? 'active' : '' }}">
-                <svg class="icon-md" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25v14.25"/></svg>
-                Logbook
-            </button>
-        </div>
-    </div>
-
-    {{-- FLIGHTS TAB CONTENT --}}
-    @if($activeTab === 'Flights')
-    <div>
-        {{-- STATS & HEATMAP ROW --}}
-        <div class="row-split">
-            {{-- Left Stats --}}
-            <div class="col-left custom-card" style="padding: 32px 24px; display: flex; align-items: center;">
-                <div class="stats-grid" style="width: 100%;">
-                    <div style="text-align: center;">
-                        <div class="stat-val stat-val-red">
-                            <svg class="icon-md" viewBox="0 0 24 24" fill="currentColor"><path d="M17.66 11.2c-.23-.3-.51-.59-.77-.82-.67-.6-1.43-1.03-2.07-1.66C13.33 7.26 13 4.85 13.95 3c-.95.23-1.78.75-2.49 1.32-2.59 2.08-3.61 5.75-2.39 8.9.04.1.08.2.08.33 0 .22-.15.42-.35.5-.23.1-.47.04-.66-.12a7.33 7.33 0 01-1.62-2.46c-1.31 2.37-1.12 5.43.37 7.62 1.11 1.63 2.8 2.65 4.67 2.91 2.45.34 5.09-.43 6.64-2.43 1.25-1.62 1.61-3.8.8-5.6-.08-.19-.18-.39-.34-.58z"/></svg>
-                            {{ $stats['dayStreak'] }}
-                        </div>
-                        <div class="stat-lbl">Day Streak</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div class="stat-val">{{ $stats['bestStreak'] }}</div>
-                        <div class="stat-lbl">Best Streak</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div class="stat-val">{{ number_format($stats['totalHours']) }}h <span style="font-size:12px; font-weight:normal; color:#aaa;">{{ str_pad((int)(($stats['totalHours'] - (int)$stats['totalHours']) * 60), 2, '0', STR_PAD_LEFT) }}m</span></div>
-                        <div class="stat-lbl">Total Hours</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div class="stat-val">{{ number_format($stats['totalFlights']) }}</div>
-                        <div class="stat-lbl">Total Flights</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div class="stat-val">{{ $stats['avgLanding'] }}</div>
-                        <div class="stat-lbl">Avg Landing</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div class="stat-val">${{ $stats['balance'] }}M</div>
-                        <div class="stat-lbl">Balance</div>
+                {{-- Info list --}}
+                <div class="dv-card">
+                    <div class="dv-card-body" style="padding:0 16px;">
+                        <ul class="dv-info-list">
+                            <li>
+                                <span class="dv-info-label">Home Airport</span>
+                                <span class="dv-info-value">
+                                    <span class="dv-airport-badge">{{ $user->home_airport ?? 'N/A' }}</span>
+                                </span>
+                            </li>
+                            <li>
+                                <span class="dv-info-label">Current Location</span>
+                                <span class="dv-info-value">
+                                    <span class="dv-airport-badge">{{ $user->last_location ?? 'N/A' }}</span>
+                                </span>
+                            </li>
+                            <li>
+                                <span class="dv-info-label">Status</span>
+                                <span class="dv-info-value">
+                                    @if($user->status==='active')
+                                        <span style="color:#10b981;font-weight:700;">● Active</span>
+                                    @else
+                                        <span style="color:#f59e0b;font-weight:700;">● {{ ucfirst($user->status) }}</span>
+                                    @endif
+                                </span>
+                            </li>
+                            <li>
+                                <span class="dv-info-label">Member since</span>
+                                <span class="dv-info-value">{{ $stats['joined'] }} ago</span>
+                            </li>
+                            @php $lastFlight = $user->pireps()->latest()->first(); @endphp
+                            <li>
+                                <span class="dv-info-label">Last flight</span>
+                                <span class="dv-info-value">{{ $lastFlight ? $lastFlight->created_at->diffForHumans() : 'Never' }}</span>
+                            </li>
+                            @if($user->simbrief_username)
+                            <li>
+                                <span class="dv-info-label">SimBrief</span>
+                                <span class="dv-info-value" style="color:var(--text-badge);">{{ $user->simbrief_username }}</span>
+                            </li>
+                            @endif
+                        </ul>
                     </div>
                 </div>
-            </div>
 
-            {{-- Heatmap --}}
-            <div class="col-right custom-card" style="padding: 24px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
-                    <h2 style="font-size: 13px; font-weight: 600; color: #fff; margin: 0;">Flight Activity</h2>
-                    <select style="background: transparent; border: 1px solid #333; color: #9ca3af; font-size: 11px; padding: 4px 8px; border-radius: 4px; outline: none;">
-                        <option>Last 12 months</option>
-                    </select>
-                </div>
-
-                {{-- Activity Grid --}}
-                <div style="overflow-x: auto; padding-bottom: 8px;">
-                    <div style="display: flex; flex-direction: column; gap: 4px; min-width: max-content;">
-                        <div style="display: flex; gap: 4px; font-size: 10px; color: #6b7280; padding-left: 20px; margin-bottom: 4px;">
-                            @php $months = ['Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May']; @endphp
-                            @foreach($months as $m)
-                                <div style="width: 44px;">{{ $m }}</div>
+                {{-- Passport mini --}}
+                @if(!empty($passportStats['airports']))
+                <div class="dv-card">
+                    <div class="dv-card-header">
+                        <i class="ph-fill ph-globe-simple" style="color:var(--text-badge);"></i> Airports Visited
+                    </div>
+                    <div class="dv-card-body">
+                        <div class="dv-stamps-grid">
+                            @foreach(array_slice($passportStats['airports'],0,20,true) as $icao => $visits)
+                                <div class="dv-stamp">
+                                    <div class="dv-stamp-code">{{ $icao }}</div>
+                                    <div class="dv-stamp-count">{{ $visits }}×</div>
+                                </div>
                             @endforeach
-                        </div>
-                        @php $maxVal = max(array_map(function($w){ return max(array_column($w,'count')?:[0]); }, $activityGrid)) ?: 1; @endphp
-                        @for($i = 0; $i < 7; $i++)
-                            <div style="display: flex; align-items: center; gap: 4px;">
-                                <div style="width: 16px; font-size: 10px; color: #6b7280;">
-                                    {{ $i==1 ? 'Mon' : ($i==3 ? 'Wed' : ($i==5 ? 'Fri' : '')) }}
-                                </div>
-                                @foreach($activityGrid as $week)
-                                    @php
-                                        $day = $week[$i] ?? null;
-                                        $lvl = 0;
-                                        if($day && $day['count'] > 0) {
-                                            $pct = $day['count'] / $maxVal;
-                                            $lvl = $pct <= .25 ? 1 : ($pct <= .5 ? 2 : ($pct <= .75 ? 3 : 4));
-                                        }
-                                    @endphp
-                                    <div class="heat-cell" data-level="{{ $lvl }}" title="{{ $day['date'] ?? '' }}: {{ $day['count'] ?? 0 }}"></div>
-                                @endforeach
-                            </div>
-                        @endfor
-                    </div>
-                </div>
-
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 24px;">
-                    <div style="font-size: 10px; color: #6b7280;">
-                        <p style="margin: 0;">{{ $stats['flightsYear'] }} flights in the last year</p>
-                        <p style="margin: 4px 0 0 0; display: flex; align-items: center; gap: 4px;">
-                            <svg class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg> 
-                            Joined {{ $stats['joined'] }} ago
-                        </p>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 4px; font-size: 10px; color: #6b7280;">
-                        <span>Less</span>
-                        <div class="heat-cell" data-level="0"></div>
-                        <div class="heat-cell" data-level="1"></div>
-                        <div class="heat-cell" data-level="2"></div>
-                        <div class="heat-cell" data-level="3"></div>
-                        <div class="heat-cell" data-level="4"></div>
-                        <span>More</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- MAP & RADAR ROW --}}
-        <div class="row-split" x-data x-init="initMapAndRadar(@json($chartData))">
-            {{-- Map --}}
-            <div class="col-right custom-card" style="display: flex; flex-direction: column; overflow: hidden;">
-                <div class="card-header-title" style="padding: 16px; border-bottom: 1px solid #1f1f22;">Flight Map</div>
-                <div style="flex: 1; min-height: 350px; position: relative; background: #0b0b0c;">
-                    <div id="flightMap" style="position: absolute; inset: 0;"></div>
-                </div>
-                {{-- Stats strip below map --}}
-                @php $lastFlight = $user->pireps()->latest()->first(); @endphp
-                <div class="map-stats-strip">
-                    <div>
-                        <div style="display: flex; justify-content: center; color: #6b7280; margin-bottom: 4px;"><svg class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></div>
-                        <div style="font-size: 9px; color: #888; text-transform: uppercase; font-weight: bold; margin-bottom: 2px;">Hub</div>
-                        <div style="font-size: 12px; font-weight: bold; color: #fff;">YBBN</div>
-                    </div>
-                    <div>
-                        <div style="display: flex; justify-content: center; color: #6b7280; margin-bottom: 4px;"><svg class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
-                        <div style="font-size: 9px; color: #888; text-transform: uppercase; font-weight: bold; margin-bottom: 2px;">Location</div>
-                        <div style="font-size: 12px; font-weight: bold; color: #fff;">{{ $lastFlight?->arrival ?? 'N/A' }}</div>
-                    </div>
-                    <div>
-                        <div style="display: flex; justify-content: center; color: #6b7280; margin-bottom: 4px;"><svg class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-                        <div style="font-size: 9px; color: #888; text-transform: uppercase; font-weight: bold; margin-bottom: 2px;">Total Revenue</div>
-                        <div style="font-size: 12px; font-weight: bold; color: #fff;">$271.2M</div>
-                    </div>
-                    <div>
-                        <div style="display: flex; justify-content: center; color: #6b7280; margin-bottom: 4px;"><svg class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg></div>
-                        <div style="font-size: 9px; color: #888; text-transform: uppercase; font-weight: bold; margin-bottom: 2px;">Distance</div>
-                        <div style="font-size: 12px; font-weight: bold; color: #fff;">3.7M nm</div>
-                    </div>
-                    <div>
-                        <div style="display: flex; justify-content: center; color: #6b7280; margin-bottom: 4px;"><svg class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg></div>
-                        <div style="font-size: 9px; color: #888; text-transform: uppercase; font-weight: bold; margin-bottom: 2px;">Passengers</div>
-                        <div style="font-size: 12px; font-weight: bold; color: #fff;">1M</div>
-                    </div>
-                    <div>
-                        <div style="display: flex; justify-content: center; color: #6b7280; margin-bottom: 4px;"><svg class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-                        <div style="font-size: 9px; color: #888; text-transform: uppercase; font-weight: bold; margin-bottom: 2px;">Last Flight</div>
-                        <div style="font-size: 12px; font-weight: bold; color: #fff;">{{ $lastFlight ? $lastFlight->departure.' -> '.$lastFlight->arrival : 'N/A' }}</div>
-                    </div>
-                    <div>
-                        <div style="display: flex; justify-content: center; color: #6b7280; margin-bottom: 4px;"><svg class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg></div>
-                        <div style="font-size: 9px; color: #888; text-transform: uppercase; font-weight: bold; margin-bottom: 2px;">VATSIM</div>
-                        <div style="font-size: 12px; font-weight: bold; color: #fff;">1259782</div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Radar --}}
-            <div class="col-left custom-card" style="padding: 24px; display: flex; flex-direction: column;">
-                <div class="card-header-title" style="margin-bottom: 24px;">Destinations</div>
-                <div style="flex: 1; display: flex; align-items: center; justify-content: center;">
-                    <canvas id="radarChart" style="max-width: 100%; max-height: 250px;"></canvas>
-                </div>
-                <div style="margin-top: 24px; text-align: center; font-size: 10px; color: #6b7280; line-height: 1.6;">
-                    {{ number_format($stats['totalFlights']) }} flights across {{ count($chartData['destinations']) }} regions<br>
-                    <span style="color: #fff;">{{ array_key_first($chartData['destinations']) ?: 'None' }}</span> is your top destination
-                </div>
-            </div>
-        </div>
-
-        {{-- TABLE ROW --}}
-        <div class="custom-card pp-table-container" style="margin-top: 24px;">
-            <table class="pp-table">
-                <thead>
-                    <tr>
-                        <th>Airline</th>
-                        <th>Flight #</th>
-                        <th>Aircraft</th>
-                        <th>Departure</th>
-                        <th>Arrival</th>
-                        <th>FPM</th>
-                        <th>Revenue</th>
-                        <th><div style="display: flex; align-items: center; gap: 4px;">Filed <svg class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></div></th>
-                        <th>Options</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @php 
-                        $flights = $user->pireps()->latest()->paginate(10);
-                        $mockRev = 207085;
-                    @endphp
-                    @foreach($flights as $f)
-                    <tr>
-                        <td>
-                            <div style="display: flex; align-items: center; gap: 6px;">
-                                <div style="color: #ef4444; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 2px;">
-                                    <svg class="icon-sm" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 
-                                    Q<span style="font-size: 9px; margin-top: 2px;">EVENTS</span>
-                                </div>
-                            </div>
-                        </td>
-                        <td style="color: #fff;">{{ $f->flight_number }}</td>
-                        <td style="color: #9ca3af;">{{ $f->aircraft_icao ?: 'QV-001' }}</td>
-                        <td style="color: #fff;">{{ $f->departure }}</td>
-                        <td style="color: #fff;">{{ $f->arrival }}</td>
-                        <td style="color: #9ca3af;">{{ $f->landing_rate ? $f->landing_rate.'fpm' : '-' }}</td>
-                        <td style="color: #10b981;">${{ number_format($mockRev - rand(1000, 50000)) }}</td>
-                        <td style="color: #9ca3af;">{{ $f->created_at->diffForHumans() }}</td>
-                        <td>
-                            <button style="background: #1a1a1c; border: 1px solid #333; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer;">VIEW</button>
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-            
-            <div style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #6b7280;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    Showing {{ $flights->firstItem() ?? 0 }} to {{ $flights->lastItem() ?? 0 }} of {{ $flights->total() }} flights
-                    <div style="display: flex; align-items: center; gap: 8px; margin-left: 16px;">
-                        Per page: 
-                        <select style="background: transparent; border: 1px solid #333; color: #9ca3af; border-radius: 4px; padding: 2px 8px; outline: none;">
-                            <option>10</option>
-                        </select>
-                    </div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <button style="background: transparent; border: 1px solid #333; color: #888; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;" {{ $flights->onFirstPage() ? 'disabled' : '' }} wire:click="previousPage">Previous</button>
-                    <button style="background: #1a1a1c; border: 1px solid #333; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;" {{ !$flights->hasMorePages() ? 'disabled' : '' }} wire:click="nextPage">Next</button>
-                </div>
-            </div>
-        </div>
-
-        {{-- BOTTOM CHARTS ROW --}}
-        <div class="bottom-charts">
-            <div class="custom-card" style="padding: 24px;">
-                <div class="card-header-title" style="margin-bottom: 24px;">Top Airlines</div>
-                <div class="chart-wrapper">
-                    <div class="chart-circle" style="border: 12px solid #ef4444; border-top-color: #8b0e0e; border-right-color: #5c0b0b;"></div>
-                    <div class="chart-text">
-                        <div style="font-size: 20px; font-weight: bold; color: #fff;">2K</div>
-                        <div style="font-size: 10px; color: #6b7280;">Flights</div>
-                    </div>
-                </div>
-            </div>
-            <div class="custom-card" style="padding: 24px;">
-                <div class="card-header-title" style="margin-bottom: 24px;">Top Aircraft</div>
-                <div class="chart-wrapper">
-                    <div class="chart-circle" style="border: 12px solid #ef4444; border-top-color: #333; border-right-color: #5c0b0b;"></div>
-                    <div class="chart-text">
-                        <div style="font-size: 20px; font-weight: bold; color: #fff;">2K</div>
-                        <div style="font-size: 10px; color: #6b7280;">Flights</div>
-                    </div>
-                </div>
-            </div>
-            <div class="custom-card" style="padding: 24px;">
-                <div class="card-header-title" style="margin-bottom: 24px;">Landings</div>
-                <div class="chart-wrapper" style="overflow: hidden;">
-                    <div class="chart-circle" style="top: 0; border: 12px solid #333; border-top-color: transparent; border-bottom-color: transparent; border-left-color: #ef4444; border-right-color: #ef4444; transform: rotate(-45deg);"></div>
-                    <div class="chart-text" style="background: #000; border: 1px solid #333; padding: 4px 8px; border-radius: 4px; margin-top: 32px;">
-                        <div style="font-size: 9px; color: #9ca3af;">0-100 fpm <span style="color: #fff; margin-left: 4px; font-weight: bold;">396</span></div>
-                        <div style="font-size: 9px; color: #6b7280;">Landings</div>
-                    </div>
-                </div>
-            </div>
-            <div class="custom-card" style="padding: 24px;">
-                <div class="card-header-title" style="margin-bottom: 24px;">Flight Duration</div>
-                <div class="chart-wrapper">
-                    <div class="chart-circle" style="border: 12px solid #ef4444; border-bottom-color: #888; border-left-color: #333;"></div>
-                    <div class="chart-text">
-                        <div style="font-size: 20px; font-weight: bold; color: #fff;">2K</div>
-                        <div style="font-size: 10px; color: #6b7280;">Flights</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    @elseif($activeTab === 'Awards')
-        <div style="margin-top: 24px;">
-            @if(count($user->achievements) > 0)
-                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px;">
-                    @foreach($user->achievements as $achievement)
-                        <div class="custom-card" style="padding: 24px; display: flex; gap: 16px; align-items: flex-start; transition: all 0.2s;">
-                            <div style="width: 48px; height: 48px; border-radius: 8px; background: #1a1a1c; border: 1px solid #333; display: flex; align-items: center; justify-content: center; color: #ef4444; flex-shrink: 0;">
-                                @if($achievement->icon)
-                                    <i class="{{ $achievement->icon }} text-xl"></i>
-                                @else
-                                    <svg class="icon-lg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                                @endif
-                            </div>
-                            <div>
-                                <h3 style="font-size: 14px; font-weight: bold; color: #fff; margin: 0 0 4px 0;">{{ $achievement->name }}</h3>
-                                <p style="font-size: 11px; color: #888; margin: 0 0 8px 0; line-height: 1.4;">{{ $achievement->description }}</p>
-                                <div style="font-size: 9px; color: #6b7280; text-transform: uppercase; font-weight: bold;">
-                                    Unlocked {{ \Carbon\Carbon::parse($achievement->pivot->unlocked_at)->diffForHumans() }}
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            @else
-                <div class="custom-card" style="padding: 48px; text-align: center;">
-                    <svg class="icon-lg" style="color: #333; margin: 0 auto 16px auto; width: 48px; height: 48px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
-                    <h3 style="font-size: 16px; font-weight: bold; color: #fff; margin: 0 0 8px 0;">No Awards Yet</h3>
-                    <p style="font-size: 12px; color: #888; margin: 0;">Complete flights and milestones to earn awards.</p>
-                </div>
-            @endif
-        </div>
-
-    @elseif($activeTab === 'Tours')
-        <div style="margin-top: 24px;">
-            @if(count($user->tours) > 0)
-                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 24px;">
-                    @foreach($user->tours as $tour)
-                        @php
-                            $progress = $tourProgress[$tour->id] ?? ['pct' => 0, 'completed' => false];
-                        @endphp
-                        <div class="custom-card" style="padding: 24px;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-                                <div>
-                                    <span style="background: #1a1a1c; color: #9ca3af; font-size: 9px; font-weight: bold; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; border: 1px solid #333;">{{ $tour->category }}</span>
-                                    <h3 style="font-size: 15px; font-weight: bold; color: #fff; margin: 8px 0 4px 0;">{{ $tour->name }}</h3>
-                                </div>
-                                @if($progress['completed'])
-                                    <div style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-size: 9px; font-weight: bold; text-transform: uppercase; padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.2);">Completed</div>
-                                @endif
-                            </div>
-                            <p style="font-size: 11px; color: #888; margin: 0 0 16px 0; line-height: 1.5;">{{ $tour->description ?: 'No description provided.' }}</p>
-                            
-                            {{-- Progress Bar --}}
-                            <div style="margin-bottom: 16px;">
-                                <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-bottom: 6px;">
-                                    <span style="color: #9ca3af;">Progress</span>
-                                    <span style="color: #fff;">{{ $progress['pct'] }}%</span>
-                                </div>
-                                <div style="height: 6px; background: #1a1a1c; border-radius: 3px; overflow: hidden; border: 1px solid #333;">
-                                    <div style="height: 100%; width: {{ $progress['pct'] }}%; background: #ef4444; transition: width 0.5s;"></div>
-                                </div>
-                            </div>
-                            
-                            {{-- Waypoints summary --}}
-                            @php $wp = is_array($tour->waypoints) ? $tour->waypoints : json_decode($tour->waypoints, true); @endphp
-                            @if(is_array($wp) && count($wp) > 0)
-                                <div style="font-size: 10px; color: #6b7280; display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
-                                    <svg class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-                                    {{ count($wp) }} Waypoints: {{ implode(' → ', array_slice($wp, 0, 4)) }} {{ count($wp) > 4 ? '...' : '' }}
+                            @if(count($passportStats['airports']) > 20)
+                                <div class="dv-stamp" style="color:var(--text-muted);">
+                                    <div class="dv-stamp-code">+{{ count($passportStats['airports'])-20 }}</div>
+                                    <div class="dv-stamp-count">more</div>
                                 </div>
                             @endif
                         </div>
-                    @endforeach
-                </div>
-            @else
-                <div class="custom-card" style="padding: 48px; text-align: center;">
-                    <svg class="icon-lg" style="color: #333; margin: 0 auto 16px auto; width: 48px; height: 48px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3.25 10.5a7.25 7.25 0 1114.5 0 7.25 7.25 0 01-14.5 0z M9.75 14.5a4.25 4.25 0 118.5 0 4.25 4.25 0 01-8.5 0z"/></svg>
-                    <h3 style="font-size: 16px; font-weight: bold; color: #fff; margin: 0 0 8px 0;">No Tours Enrolled</h3>
-                    <p style="font-size: 12px; color: #888; margin: 0;">Enroll in tours from the Tour Center.</p>
-                </div>
-            @endif
-        </div>
-
-    @elseif($activeTab === 'Passport')
-        <div class="row-split">
-            <div class="col-left custom-card" style="padding: 32px 24px;">
-                <div class="card-header-title" style="margin-bottom: 24px;">Passport Stats</div>
-                <div class="stats-grid" style="grid-template-columns: 1fr; row-gap: 24px; text-align: left;">
-                    <div>
-                        <div class="stat-lbl" style="margin-top: 0; margin-bottom: 6px;">Unique Airports</div>
-                        <div class="stat-val">{{ $passportStats['uniqueAirports'] }}</div>
-                    </div>
-                    <div>
-                        <div class="stat-lbl" style="margin-top: 0; margin-bottom: 6px;">Countries Visited</div>
-                        <div class="stat-val">{{ $passportStats['countries'] }}</div>
-                    </div>
-                    <div>
-                        <div class="stat-lbl" style="margin-top: 0; margin-bottom: 6px;">Total Distance Flown</div>
-                        <div class="stat-val">{{ number_format($passportStats['totalDistance']) }} <span style="font-size: 12px; color: #888; font-weight: normal;">nm</span></div>
-                    </div>
-                    <div>
-                        <div class="stat-lbl" style="margin-top: 0; margin-bottom: 6px;">Most Visited</div>
-                        <div class="stat-val" style="color: #ef4444;">{{ $passportStats['mostVisited'] }}</div>
                     </div>
                 </div>
-            </div>
-            
-            <div class="col-right custom-card" style="padding: 24px;">
-                <div class="card-header-title" style="margin-bottom: 24px;">Airports Visited (Stamps)</div>
-                @if(empty($passportStats['airports']))
-                    <p style="font-size: 12px; color: #6b7280;">No airports visited yet.</p>
-                @else
-                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                        @foreach($passportStats['airports'] as $icao => $visits)
-                            <div style="background: #111113; border: 1px dashed #333; border-radius: 4px; padding: 8px 12px; display: flex; flex-direction: column; align-items: center; min-width: 60px;">
-                                <div style="font-weight: bold; font-size: 14px; color: #fff; letter-spacing: 1px;">{{ $icao }}</div>
-                                <div style="font-size: 9px; color: #ef4444; font-weight: bold; margin-top: 2px;">{{ $visits }}x</div>
-                            </div>
-                        @endforeach
-                    </div>
                 @endif
             </div>
-        </div>
 
-    @elseif($activeTab === 'Logbook')
-        <div class="custom-card pp-table-container" style="margin-top: 24px;">
-            <table class="pp-table">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Flight #</th>
-                        <th>Departure</th>
-                        <th>Arrival</th>
-                        <th>Aircraft</th>
-                        <th>Duration</th>
-                        <th>FPM</th>
-                        <th>Score</th>
-                        <th>Status</th>
-                        <th>Options</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @php 
-                        $allFlights = $user->pireps()->latest()->paginate(20, ['*'], 'logbook');
-                    @endphp
-                    @forelse($allFlights as $f)
-                    <tr>
-                        <td style="color: #888;">{{ $f->created_at->format('Y-m-d H:i') }}</td>
-                        <td style="color: #fff; font-weight: 500;">{{ $f->flight_number }}</td>
-                        <td style="color: #fff; font-weight: 500;">{{ $f->departure }}</td>
-                        <td style="color: #fff; font-weight: 500;">{{ $f->arrival }}</td>
-                        <td style="color: #9ca3af;">{{ $f->aircraft_icao ?: 'N/A' }}</td>
-                        <td style="color: #9ca3af;">{{ $f->flight_time }}h</td>
-                        <td style="color: #9ca3af;">{{ $f->landing_rate ? $f->landing_rate.'fpm' : '-' }}</td>
-                        <td style="color: #fff;">{{ $f->score }}</td>
-                        <td>
-                            @if($f->status === 'approved')
-                                <span style="color: #10b981; font-size: 9px; font-weight: bold; text-transform: uppercase;">Approved</span>
-                            @elseif($f->status === 'rejected')
-                                <span style="color: #ef4444; font-size: 9px; font-weight: bold; text-transform: uppercase;">Rejected</span>
-                            @else
-                                <span style="color: #f59e0b; font-size: 9px; font-weight: bold; text-transform: uppercase;">Pending</span>
+            <!-- RIGHT MAIN CONTENT -->
+            <div style="min-width:0;display:flex;flex-direction:column;gap:16px;">
+                {{-- Banner --}}
+                <div style="background:var(--bg-header);border:1px solid var(--border-card);border-radius:8px;height:120px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px;letter-spacing:.05em;overflow:hidden;">
+                    <i class="ph-fill ph-image" style="font-size:32px;margin-right:8px;"></i> Profile Banner
+                </div>
+
+                {{-- Biography --}}
+                <div class="dv-bio">
+                    <h5><i class="ph-fill ph-article" style="color:var(--text-badge);"></i> Pilot's Biography</h5>
+                    <p style="margin:0;">
+                        {{ $user->name }} joined on {{ $user->created_at->format('F j, Y') }} and is based
+                        @if($user->home_airport) at <strong style="color:var(--text-primary);">{{ $user->home_airport }}</strong>.@else internationally.@endif
+                        Currently holding the rank of <strong style="color:var(--text-primary);">{{ $user->rank?->name ?? 'Candidate' }}</strong>,
+                        they have completed <strong style="color:var(--text-primary);">{{ $stats['totalFlights'] }}</strong> flight(s)
+                        totalling <strong style="color:var(--text-primary);">{{ number_format($stats['totalHours'],1) }}</strong> flight hours.
+                        @if($lastFlight) The last flight was {{ $lastFlight->created_at->diffForHumans() }}.@endif
+                    </p>
+                </div>
+
+                {{-- Stats widgets 2×3 --}}
+                <div class="dv-stats-grid">
+                    <div class="dv-stat-widget">
+                        <div class="dv-stat-icon"><i class="ph-fill ph-airplane-tilt"></i></div>
+                        <div>
+                            <div class="dv-stat-val">{{ $stats['totalFlights'] }}</div>
+                            <div class="dv-stat-lbl">Flights</div>
+                        </div>
+                    </div>
+                    <div class="dv-stat-widget">
+                        <div class="dv-stat-icon"><i class="ph-fill ph-clock"></i></div>
+                        <div>
+                            <div class="dv-stat-val">{{ number_format($stats['totalHours'],1) }}h</div>
+                            <div class="dv-stat-lbl">Flight Hours</div>
+                        </div>
+                    </div>
+                    <div class="dv-stat-widget">
+                        <div class="dv-stat-icon" style="background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.25);color:#10b981;"><i class="ph-fill ph-map-pin"></i></div>
+                        <div>
+                            <div class="dv-stat-val green">{{ $user->last_location ?? 'N/A' }}</div>
+                            <div class="dv-stat-lbl">Current Airport</div>
+                        </div>
+                    </div>
+                    <div class="dv-stat-widget">
+                        <div class="dv-stat-icon"><i class="ph-fill ph-timer"></i></div>
+                        <div>
+                            <div class="dv-stat-val">{{ $stats['bestStreak'] }}</div>
+                            <div class="dv-stat-lbl">Best Streak (days)</div>
+                        </div>
+                    </div>
+                    <div class="dv-stat-widget">
+                        <div class="dv-stat-icon" style="background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.2);color:#f59e0b;"><i class="ph-fill ph-arrows-down-up"></i></div>
+                        <div>
+                            <div class="dv-stat-val" style="color:#f59e0b;">{{ $stats['avgLanding'] }} fpm</div>
+                            <div class="dv-stat-lbl">Avg Landing Rate</div>
+                        </div>
+                    </div>
+                    <div class="dv-stat-widget">
+                        <div class="dv-stat-icon" style="background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.2);color:#10b981;"><i class="ph-fill ph-ruler"></i></div>
+                        <div>
+                            <div class="dv-stat-val green">{{ number_format($passportStats['totalDistance']) }} nm</div>
+                            <div class="dv-stat-lbl">Total Distance</div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Tabs and Tab contents --}}
+                <div class="dv-card" style="overflow:hidden;">
+                    <div class="dv-tabs">
+                        <button wire:click="$set('activeTab','Flights')" class="dv-tab {{ $activeTab==='Flights'?'active':'' }}">
+                            <i class="ph-fill ph-list-bullets"></i> Your Flights
+                        </button>
+                        <button wire:click="$set('activeTab','Awards')" class="dv-tab {{ $activeTab==='Awards'?'active':'' }}">
+                            <i class="ph-fill ph-trophy"></i> Your Awards
+                            @if(count($user->achievements)>0)
+                                <span style="background:var(--text-badge);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;">{{ count($user->achievements) }}</span>
                             @endif
-                        </td>
-                        <td>
-                            <button style="background: #1a1a1c; border: 1px solid #333; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer;">VIEW</button>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="10" style="text-align: center; padding: 32px; color: #6b7280;">No flights recorded in logbook yet.</td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-            
-            <div style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #6b7280; border-top: 1px solid #1f1f22;">
-                <div>Showing {{ $allFlights->firstItem() ?? 0 }} to {{ $allFlights->lastItem() ?? 0 }} of {{ $allFlights->total() }} flights</div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <button style="background: transparent; border: 1px solid #333; color: #888; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;" {{ $allFlights->onFirstPage() ? 'disabled' : '' }} wire:click="gotoPage({{ $allFlights->currentPage() - 1 }}, 'logbook')">Previous</button>
-                    <button style="background: #1a1a1c; border: 1px solid #333; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;" {{ !$allFlights->hasMorePages() ? 'disabled' : '' }} wire:click="gotoPage({{ $allFlights->currentPage() + 1 }}, 'logbook')">Next</button>
+                        </button>
+                        <button wire:click="$set('activeTab','Tours')" class="dv-tab {{ $activeTab==='Tours'?'active':'' }}">
+                            <i class="ph-fill ph-path"></i> Tours
+                        </button>
+                        <button wire:click="$set('activeTab','Pireps')" class="dv-tab {{ $activeTab==='Pireps'?'active':'' }}">
+                            <i class="ph-fill ph-airplane-takeoff"></i> PIREPs
+                        </button>
+                        <button wire:click="$set('activeTab','Passport')" class="dv-tab {{ $activeTab==='Passport'?'active':'' }}">
+                            <i class="ph-fill ph-globe-simple"></i> Passport
+                        </button>
+                    </div>
+
+                    {{-- TAB: FLIGHTS --}}
+                    @if($activeTab === 'Flights')
+                    <div style="padding:20px;display:flex;flex-direction:column;gap:16px;">
+                        {{-- Heatmap --}}
+                        <div>
+                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;display:flex;justify-content:space-between;">
+                                <span><i class="ph-fill ph-chart-bar" style="color:var(--text-badge);"></i> Flight Activity</span>
+                                <span style="font-weight:400;">{{ $stats['flightsYear'] }} flights this year</span>
+                            </div>
+                            <div style="overflow-x:auto;padding-bottom:8px;">
+                                <div style="display:flex;flex-direction:column;gap:3px;min-width:max-content;">
+                                    <div style="display:flex;gap:3px;font-size:10px;color:var(--text-muted);padding-left:22px;margin-bottom:4px;">
+                                        @php $months=['Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May']; @endphp
+                                        @foreach($months as $m)<div style="width:45px;">{{ $m }}</div>@endforeach
+                                    </div>
+                                    @php $maxVal=max(array_map(function($w){return max(array_column($w,'count')?:[0]);},$activityGrid))?:1; @endphp
+                                    @for($i=0;$i<7;$i++)
+                                    <div style="display:flex;align-items:center;gap:3px;">
+                                        <div style="width:20px;font-size:10px;color:var(--text-muted);text-align:right;">
+                                            {{ $i==1?'Mon':($i==3?'Wed':($i==5?'Fri':'')) }}
+                                        </div>
+                                        @foreach($activityGrid as $week)
+                                            @php
+                                                $day=$week[$i]??null;$lvl=0;
+                                                if($day&&$day['count']>0){
+                                                    $pct=$day['count']/$maxVal;
+                                                    $lvl=$pct<=.25?1:($pct<=.5?2:($pct<=.75?3:4));
+                                                }
+                                            @endphp
+                                            <div style="width:12px;height:12px;border-radius:2px;flex-shrink:0;
+                                                background:{{ ['var(--bg-header)','#1e3a5f','#1d4ed8','#2563eb','#3b82f6'][$lvl] }};"
+                                                title="{{ $day['date']??'' }}: {{ $day['count']??0 }} flights"></div>
+                                        @endforeach
+                                    </div>
+                                    @endfor
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Map + Radar Grid --}}
+                        <div class="dv-map-radar-grid">
+                            {{-- Flight Map --}}
+                            <div x-data x-init="dvInitMap(@json($chartData))">
+                                <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">
+                                    <i class="ph-fill ph-globe-hemisphere-west" style="color:var(--text-badge);"></i> Flight Routes Map
+                                </div>
+                                <div style="border-radius:8px;overflow:hidden;border:1px solid var(--border-card);">
+                                    <div id="dvFlightMap"></div>
+                                </div>
+                            </div>
+
+                            {{-- Destinations Radar --}}
+                            <div>
+                                <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">
+                                    <i class="ph-fill ph-chart-polar" style="color:var(--text-badge);"></i> Destinations
+                                </div>
+                                <div style="border-radius:8px;overflow:hidden;border:1px solid var(--border-card);background:var(--bg-card);padding:12px;height:280px;display:flex;align-items:center;justify-content:center;">
+                                    <canvas id="dvRadarChart" style="max-height:220px;width:100%;"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- TAB: AWARDS --}}
+                    @elseif($activeTab === 'Awards')
+                    <div style="padding:20px;">
+                        @if(count($user->achievements)>0)
+                            <div class="dv-awards-grid">
+                                @foreach($user->achievements as $ach)
+                                <div class="dv-award-card">
+                                    <div class="dv-award-name">{{ $ach->name }}</div>
+                                    <div class="dv-award-img">
+                                        @if($ach->image ?? false)
+                                            <img src="{{ $ach->image }}" alt="{{ $ach->name }}">
+                                        @else
+                                            <div style="text-align:center;padding:16px;">
+                                                <i class="ph-fill ph-trophy" style="font-size:48px;color:var(--border-card);display:block;margin-bottom:6px;"></i>
+                                                <span style="font-size:11px;color:var(--text-muted);">Award</span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <div class="dv-award-footer">
+                                        <strong>{{ $ach->description }}</strong>
+                                        {{ \Carbon\Carbon::parse($ach->pivot->unlocked_at)->format('j. F Y') }}
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div style="text-align:center;padding:48px;">
+                                <i class="ph-fill ph-trophy" style="font-size:48px;color:var(--border-card);display:block;margin-bottom:12px;"></i>
+                                <div style="font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:6px;">No Awards Yet</div>
+                                <div style="font-size:13px;color:var(--text-muted);">Complete flights and milestones to earn awards.</div>
+                            </div>
+                        @endif
+                    </div>
+
+                    {{-- TAB: TOURS --}}
+                    @elseif($activeTab === 'Tours')
+                    <div style="padding:20px;">
+                        @if(count($user->tours) > 0)
+                            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;">
+                                @foreach($user->tours as $tour)
+                                @php $progress = $tourProgress[$tour->id] ?? ['pct'=>0,'completed'=>false]; @endphp
+                                <div class="dv-card">
+                                    <div class="dv-card-body" style="padding:16px;">
+                                        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+                                            <div>
+                                                <span style="background:var(--bg-badge);color:var(--text-badge);border:1px solid var(--border-badge);font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:10px;">
+                                                    {{ $tour->category }}
+                                                </span>
+                                                <h3 style="font-size:15px;font-weight:700;color:var(--text-primary);margin:8px 0 4px;">{{ $tour->name }}</h3>
+                                            </div>
+                                            @if($progress['completed'])
+                                                <span style="background:rgba(16,185,129,.15);color:#10b981;font-size:10px;font-weight:700;text-transform:uppercase;padding:3px 9px;border-radius:10px;border:1px solid rgba(16,185,129,.3);white-space:nowrap;">
+                                                    <i class="ph-fill ph-check-circle"></i> Completed
+                                                </span>
+                                            @endif
+                                        </div>
+                                        <p style="font-size:12px;color:var(--text-secondary);margin:0 0 14px;line-height:1.5;">{{ $tour->description ?: 'No description provided.' }}</p>
+                                        <div style="margin-bottom:14px;">
+                                            <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:6px;">
+                                                <span style="color:var(--text-muted);">Progress</span>
+                                                <span style="color:var(--text-badge);">{{ $progress['pct'] }}%</span>
+                                            </div>
+                                            <div style="height:6px;background:var(--bg-header);border-radius:3px;overflow:hidden;border:1px solid var(--border-card);">
+                                                <div style="height:100%;background:var(--text-badge);width:{{ $progress['pct'] }}%;border-radius:3px;"></div>
+                                            </div>
+                                        </div>
+                                        @php $wp = is_array($tour->waypoints) ? $tour->waypoints : json_decode($tour->waypoints,true); @endphp
+                                        @if(is_array($wp) && count($wp) > 0)
+                                            <div style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+                                                <i class="ph-fill ph-map-trifold" style="color:var(--text-badge);"></i>
+                                                {{ count($wp) }} waypoints: {{ implode(' → ', array_slice($wp,0,4)) }}{{ count($wp)>4 ? ' ...' : '' }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div style="text-align:center;padding:48px;">
+                                <i class="ph-fill ph-path" style="font-size:48px;color:var(--border-card);display:block;margin-bottom:12px;"></i>
+                                <div style="font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:6px;">No Tours Enrolled</div>
+                                <div style="font-size:13px;color:var(--text-muted);">Enroll in a tour to start flying the route.</div>
+                            </div>
+                        @endif
+                    </div>
+
+                    {{-- TAB: PIREPs --}}
+                    @elseif($activeTab === 'Pireps')
+                    <div style="overflow-x:auto;">
+                        <table class="dv-table">
+                            <thead>
+                                <tr>
+                                    <th>Flight #</th>
+                                    <th>DEP</th>
+                                    <th>ARR</th>
+                                    <th>Aircraft</th>
+                                    <th>Duration</th>
+                                    <th>Landing</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php $pireps = $user->pireps()->latest()->paginate(15); @endphp
+                                @forelse($pireps as $f)
+                                <tr>
+                                    <td style="color:var(--text-primary);font-weight:600;font-family:monospace;">{{ $f->flight_number }}</td>
+                                    <td><span class="dv-icao">{{ $f->departure }}</span></td>
+                                    <td><span class="dv-icao">{{ $f->arrival }}</span></td>
+                                    <td>{{ $f->aircraft_icao ?: '—' }}</td>
+                                    <td>{{ $f->flight_time ? $f->flight_time.'h' : '—' }}</td>
+                                    <td>
+                                        @if($f->landing_rate)
+                                            <span style="font-weight:600;color:{{ abs($f->landing_rate)<200?'#10b981':(abs($f->landing_rate)<400?'#f59e0b':'#ef4444') }};">
+                                                {{ $f->landing_rate }} fpm
+                                            </span>
+                                        @else <span style="color:var(--text-muted);">—</span> @endif
+                                    </td>
+                                    <td>
+                                        @if($f->status==='approved')
+                                            <span style="background:rgba(16,185,129,.15);color:#10b981;font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:10px;border:1px solid rgba(16,185,129,.3);">Approved</span>
+                                        @elseif($f->status==='rejected')
+                                            <span style="background:rgba(239,68,68,.15);color:#ef4444;font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:10px;border:1px solid rgba(239,68,68,.3);">Rejected</span>
+                                        @else
+                                            <span style="background:rgba(245,158,11,.15);color:#f59e0b;font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:10px;border:1px solid rgba(245,158,11,.3);">Pending</span>
+                                        @endif
+                                    </td>
+                                    <td style="font-size:11px;color:var(--text-muted);white-space:nowrap;">{{ $f->created_at->format('Y-m-d') }}</td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);">
+                                        <i class="ph-fill ph-airplane" style="font-size:32px;display:block;margin-bottom:8px;color:var(--border-card);"></i>
+                                        No PIREPs recorded yet.
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                        @if($pireps->hasPages())
+                        <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border-card);font-size:12px;color:var(--text-muted);">
+                            <span>Showing {{ $pireps->firstItem() }}–{{ $pireps->lastItem() }} of {{ $pireps->total() }}</span>
+                            <div style="display:flex;gap:8px;">
+                                <button class="dv-page-btn" {{ $pireps->onFirstPage()?'disabled':'' }} wire:click="previousPage">
+                                    <i class="ph-fill ph-caret-left"></i> Prev
+                                </button>
+                                <button class="dv-page-btn" {{ !$pireps->hasMorePages()?'disabled':'' }} wire:click="nextPage">
+                                    Next <i class="ph-fill ph-caret-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                        @endif
+                    </div>
+
+                    {{-- TAB: PASSPORT --}}
+                    @elseif($activeTab === 'Passport')
+                    <div style="padding:20px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+                        <div style="background:var(--bg-header);border:1px solid var(--border-card);border-radius:8px;padding:16px;text-align:center;">
+                            <div style="font-size:22px;font-weight:700;color:var(--text-badge);">{{ $passportStats['uniqueAirports'] }}</div>
+                            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-top:4px;">Airports</div>
+                        </div>
+                        <div style="background:var(--bg-header);border:1px solid var(--border-card);border-radius:8px;padding:16px;text-align:center;">
+                            <div style="font-size:22px;font-weight:700;color:#10b981;">{{ $passportStats['countries'] }}</div>
+                            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-top:4px;">Countries</div>
+                        </div>
+                        <div style="background:var(--bg-header);border:1px solid var(--border-card);border-radius:8px;padding:16px;text-align:center;">
+                            <div style="font-size:22px;font-weight:700;color:#f59e0b;">{{ number_format($passportStats['totalDistance']) }}</div>
+                            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-top:4px;">nm Flown</div>
+                        </div>
+                        <div style="background:var(--bg-header);border:1px solid var(--border-card);border-radius:8px;padding:16px;text-align:center;">
+                            <div style="font-size:22px;font-weight:700;color:var(--text-primary);">{{ $passportStats['mostVisited'] ?: '—' }}</div>
+                            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-top:4px;">Top Airport</div>
+                        </div>
+                    </div>
+                    <div style="padding:0 20px 20px;">
+                        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">
+                            <i class="ph-fill ph-stamp" style="color:var(--text-badge);"></i> Visited Airports
+                        </div>
+                        @if(!empty($passportStats['airports']))
+                            <div class="dv-stamps-grid">
+                                @foreach($passportStats['airports'] as $icao => $visits)
+                                    <div class="dv-stamp">
+                                        <div class="dv-stamp-code">{{ $icao }}</div>
+                                        <div class="dv-stamp-count">{{ $visits }}×</div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <p style="color:var(--text-muted);font-size:13px;">No airports visited yet.</p>
+                        @endif
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
-    @endif
+    </div>
+</div>
 
-    @push('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-    function initMapAndRadar(data) {
-        // Radar
-        const ctx = document.getElementById('radarChart');
-        if (ctx) {
-            new Chart(ctx, {
-                type: 'radar',
-                data: {
-                    labels: Object.keys(data.destinations).map(l => l.padEnd(8,' ')),
-                    datasets: [{
-                        data: Object.values(data.destinations),
-                        backgroundColor: 'rgba(239,68,68,0.8)',
-                        borderColor: '#ef4444',
-                        borderWidth: 1,
-                        pointRadius: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        r: {
-                            grid: { color: '#222' },
-                            angleLines: { color: '#222' },
-                            ticks: { display: false },
-                            pointLabels: { color: '#666', font: { size: 9 } }
-                        }
-                    }
-                }
-            });
-        }
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let dvRadarChart = null;
 
-        // Map
-        const mapEl = document.getElementById('flightMap');
-        if (mapEl && typeof L !== 'undefined') {
-            const map = L.map('flightMap', { zoomControl: false }).setView([20, 0], 2);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                subdomains: 'abcd',
-                maxZoom: 19
+function dvInitMap(data) {
+    const mapEl = document.getElementById('dvFlightMap');
+    const isDark = document.documentElement.classList.contains('dark');
+    
+    if (mapEl && typeof L !== 'undefined') {
+        // avoid re-init
+        if (!mapEl._leaflet_id) {
+            const map = L.map('dvFlightMap', { zoomControl: true }).setView([20, 0], 2);
+            
+            const tileUrl = isDark 
+                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+                
+            L.tileLayer(tileUrl, {
+                subdomains: 'abcd', maxZoom: 19
             }).addTo(map);
 
             if (data.routes && data.routes.length) {
                 const bounds = [];
-                data.routes.forEach(function(r) {
+                data.routes.forEach(r => {
                     const from = L.latLng(r.from.lat, r.from.lng);
-                    const to   = L.latLng(r.to.lat, r.to.lng);
-                    L.polyline([from, to], { color: '#ef4444', weight: 1.5, opacity: 0.8 }).addTo(map);
+                    const to   = L.latLng(r.to.lat,   r.to.lng);
+                    L.polyline([from, to], { color: '#518ce5', weight: 1.5, opacity: 0.7 }).addTo(map);
                     bounds.push(from, to);
                 });
                 map.fitBounds(bounds, { padding: [30, 30] });
             }
         }
     }
-    
-    document.addEventListener('livewire:initialized', () => {
-        if(document.getElementById('radarChart')) {
-            initMapAndRadar(@json($chartData));
+
+    const radarEl = document.getElementById('dvRadarChart');
+    if (radarEl && typeof Chart !== 'undefined') {
+        if (dvRadarChart) {
+            dvRadarChart.destroy();
         }
-    });
-    </script>
-    @endpush
-</div>
+        
+        const gridColor = isDark ? '#3a3f54' : '#e9ebec';
+        const labelColor = isDark ? '#a0a8c0' : '#495057';
+        
+        dvRadarChart = new Chart(radarEl, {
+            type: 'radar',
+            data: {
+                labels: Object.keys(data.destinations).map(l => l.length > 10 ? l.substring(0,10)+'…' : l),
+                datasets: [{
+                    data: Object.values(data.destinations),
+                    backgroundColor: 'rgba(81,140,229,0.18)',
+                    borderColor: '#518ce5',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#518ce5',
+                    pointRadius: 3,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    r: {
+                        grid: { color: gridColor },
+                        angleLines: { color: gridColor },
+                        ticks: { display: false },
+                        pointLabels: { color: labelColor, font: { size: 10, weight: '600' } }
+                    }
+                }
+            }
+        });
+    }
+}
+
+document.addEventListener('livewire:initialized',  () => dvInitMap(@json($chartData)));
+document.addEventListener('livewire:navigated',     () => dvInitMap(@json($chartData)));
+</script>
+@endpush

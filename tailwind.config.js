@@ -14,22 +14,47 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Geist', 'Inter', ...defaultTheme.fontFamily.sans],
+                sans: ['Inter', 'Nunito', ...defaultTheme.fontFamily.sans],
             },
             colors: {
-                crimson: {
-                    50: '#fff1f2',
-                    100: '#ffe4e6',
-                    200: '#fecdd3',
-                    300: '#fda4af',
-                    400: '#fb7185',
-                    500: '#e11d48',
-                    600: '#be123c',
-                    700: '#9f1239',
-                    800: '#881337',
-                    900: '#4c0519',
-                    950: '#2d000b',
+                // Primary blue palette (matches #518ce5 from demo.sass-projects.dev)
+                primary: {
+                    50:  '#eff5fe',
+                    100: '#ddeafd',
+                    200: '#c3d8fb',
+                    300: '#99bdf8',
+                    400: '#6898f2',
+                    500: '#518ce5',
+                    600: '#3a6fd8',
+                    700: '#2f5abf',
+                    800: '#2a4b9c',
+                    900: '#28417b',
+                    950: '#1c2c54',
                 },
+                // Keep crimson for any backward compat references
+                crimson: {
+                    50:  '#eff5fe',
+                    100: '#ddeafd',
+                    200: '#c3d8fb',
+                    300: '#99bdf8',
+                    400: '#6898f2',
+                    500: '#518ce5',
+                    600: '#3a6fd8',
+                    700: '#2f5abf',
+                    800: '#2a4b9c',
+                    900: '#28417b',
+                    950: '#1c2c54',
+                },
+            },
+            backgroundColor: {
+                'page': '#f4f5fa',
+                'sidebar': '#ffffff',
+                'header': '#ffffff',
+            },
+            boxShadow: {
+                'sidebar': '2px 0 10px rgba(0,0,0,0.05)',
+                'card': '0 1px 4px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04)',
+                'card-hover': '0 4px 16px rgba(81,140,229,0.12)',
             },
         },
     },

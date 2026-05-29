@@ -108,56 +108,84 @@ new class extends Component {
     }
 }; ?>
 
-<div class="max-w-7xl mx-auto space-y-6">
-    <div>
-        <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Flight History</h1>
-        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Visual map of all your completed flights.</p>
-    </div>
-
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="stat-card">
-            <span class="stat-label">Total Flights</span>
-            <span class="stat-value">{{ $stats['total_flights'] ?? 0 }}</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-label">Total Hours</span>
-            <span class="stat-value">{{ number_format($stats['total_hours'] ?? 0, 1) }}</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-label">Destinations</span>
-            <span class="stat-value">{{ $stats['unique_destinations'] ?? 0 }}</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-label">Routes Flown</span>
-            <span class="stat-value">{{ count($routes) }}</span>
+<div class="sp-wrap">
+    <div class="sp-title-area">
+        <div class="sp-title">
+            <i class="ph-fill ph-map-trifold"></i> Flight History
         </div>
     </div>
 
-    <div class="card p-5">
-        <div id="flightHistoryMap" class="w-full h-[500px] rounded-xl z-0" style="min-height: 500px;"></div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        <div class="sp-card" style="padding: 16px; display: flex; align-items: center; gap: 16px;">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--bg-badge); color: var(--text-badge); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;">
+                <i class="ph-fill ph-airplane-tilt"></i>
+            </div>
+            <div>
+                <div style="font-size: 20px; font-weight: 700; color: var(--text-primary); line-height: 1.2;">{{ $stats['total_flights'] ?? 0 }}</div>
+                <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total Flights</div>
+            </div>
+        </div>
+
+        <div class="sp-card" style="padding: 16px; display: flex; align-items: center; gap: 16px;">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--bg-badge); color: var(--text-badge); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;">
+                <i class="ph-fill ph-clock"></i>
+            </div>
+            <div>
+                <div style="font-size: 20px; font-weight: 700; color: var(--text-primary); line-height: 1.2;">{{ number_format($stats['total_hours'] ?? 0, 1) }}</div>
+                <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total Hours</div>
+            </div>
+        </div>
+
+        <div class="sp-card" style="padding: 16px; display: flex; align-items: center; gap: 16px;">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--bg-badge); color: var(--text-badge); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;">
+                <i class="ph-fill ph-map-pin"></i>
+            </div>
+            <div>
+                <div style="font-size: 20px; font-weight: 700; color: var(--text-primary); line-height: 1.2;">{{ $stats['unique_destinations'] ?? 0 }}</div>
+                <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Destinations</div>
+            </div>
+        </div>
+
+        <div class="sp-card" style="padding: 16px; display: flex; align-items: center; gap: 16px;">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--bg-badge); color: var(--text-badge); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;">
+                <i class="ph-fill ph-path"></i>
+            </div>
+            <div>
+                <div style="font-size: 20px; font-weight: 700; color: var(--text-primary); line-height: 1.2;">{{ count($routes) }}</div>
+                <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Routes Flown</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="sp-card" style="margin-bottom: 24px; padding: 20px;">
+        <div id="flightHistoryMap" style="width: 100%; height: 500px; border-radius: 8px; z-index: 0;"></div>
     </div>
 
     @if(!empty($stats['top_airports']))
-    <div class="card p-5">
-        <h3 class="text-sm font-semibold text-slate-900 dark:text-white mb-3">Most Visited Airports</h3>
-        <div class="space-y-2">
-            @foreach($stats['top_airports'] as $icao => $count)
-            <div class="flex items-center justify-between text-sm">
-                <span class="font-mono text-slate-700 dark:text-slate-300">{{ $icao }}</span>
-                <span class="text-slate-500">{{ $count }} {{ Str::plural('visit', $count) }}</span>
+    <div class="sp-card" style="margin-bottom: 24px;">
+        <div class="sp-card-header">
+            <div class="sp-card-title"><i class="ph-fill ph-star"></i> Most Visited Airports</div>
+        </div>
+        <div class="sp-card-body">
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                @foreach($stats['top_airports'] as $icao => $count)
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-family: monospace; font-size: 14px; font-weight: 700; color: var(--text-primary);">{{ $icao }}</span>
+                    <span style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">{{ $count }} {{ Str::plural('visit', $count) }}</span>
+                </div>
+                @endforeach
             </div>
-            @endforeach
         </div>
     </div>
     @endif
 
     @if(count($routes) === 0)
-    <div class="card p-8 text-center text-slate-400 dark:text-slate-500">
-        <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z"/>
-        </svg>
-        <p>No completed flights yet</p>
-        <p class="text-xs mt-1">Complete flights to see your history here.</p>
+    <div class="sp-card">
+        <div class="sp-empty">
+            <i class="ph-fill ph-airplane-tilt"></i>
+            <div style="font-size: 15px; font-weight: 700; color: var(--text-primary);">No completed flights yet</div>
+            <div style="font-size: 13px; margin-top: 4px;">Complete flights to see your history here.</div>
+        </div>
     </div>
     @endif
 </div>

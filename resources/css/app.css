@@ -1,3 +1,6 @@
+/* ─── Google Fonts ─────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,16 +8,16 @@
 @layer base {
     * {
         scrollbar-width: thin;
-        scrollbar-color: theme('colors.slate.300') transparent;
+        scrollbar-color: #d1d5db transparent;
     }
 
     .dark * {
-        scrollbar-color: theme('colors.slate.700') transparent;
+        scrollbar-color: #374151 transparent;
     }
 
     ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
+        width: 5px;
+        height: 5px;
     }
 
     ::-webkit-scrollbar-track {
@@ -22,70 +25,205 @@
     }
 
     ::-webkit-scrollbar-thumb {
-        border-radius: 3px;
+        background: #d1d5db;
+        border-radius: 10px;
+    }
+
+    .dark ::-webkit-scrollbar-thumb {
+        background: #374151;
+    }
+
+    /* ══ SPTheme Dynamic Theme Variables ══════════════════════ */
+    :root {
+        --bg-page: #f8f9fa;
+        --bg-card: #ffffff;
+        --bg-header: #f1f3f5;
+        --bg-header-hover: rgba(81, 140, 229, 0.05);
+        --border-card: #e9ebec;
+        --text-primary: #212529;
+        --text-secondary: #495057;
+        --text-muted: #868e96;
+        --bg-badge: rgba(81, 140, 229, 0.1);
+        --border-badge: rgba(81, 140, 229, 0.25);
+        --text-badge: #518ce5;
+        --bg-search: #ffffff;
+        --border-search: #ced4da;
+        --text-search: #212529;
+        --shadow-card: 0 2px 4px rgba(0, 0, 0, .04);
+    }
+
+    .dark {
+        --bg-page: #1a1d2e;
+        --bg-card: #2b2f3e;
+        --bg-header: #23263a;
+        --bg-header-hover: rgba(81, 140, 229, 0.08);
+        --border-card: #3a3f54;
+        --text-primary: #e2e8f0;
+        --text-secondary: #a0a8c0;
+        --text-muted: #6b7280;
+        --bg-badge: rgba(81, 140, 229, 0.18);
+        --border-badge: rgba(81, 140, 229, 0.35);
+        --text-badge: #518ce5;
+        --bg-search: #23263a;
+        --border-search: #3a3f54;
+        --text-search: #e2e8f0;
+        --shadow-card: none;
     }
 
     body {
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+        background-color: var(--bg-page) !important;
+        color: var(--text-primary);
+        font-family: 'Inter', sans-serif;
+    }
+
+    a {
+        text-decoration: none;
     }
 }
 
 @layer components {
-    .card {
-        @apply bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm;
-        backdrop-filter: blur(12px);
+
+    /* ── Wrapper & Headings ─────────────────────────────────── */
+    .sp-wrap {
+        padding: 24px;
+        max-width: 1300px;
+        margin: 0 auto;
+        width: 100%;
+    }
+
+    .sp-title-area {
+        display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .sp-title {
+        display: flex; align-items: center; gap: 10px;
+        font-size: 20px; font-weight: 700; color: var(--text-primary);
+        padding-bottom: 12px; border-bottom: 2px solid var(--text-badge);
+        width: fit-content; margin-bottom: 24px;
+    }
+    
+    .sp-title-area .sp-title {
+        margin-bottom: 0;
+    }
+
+    /* ── Cards ─────────────────────────────────────────────── */
+    .sp-card, .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-card);
+        border-radius: 8px;
+        box-shadow: var(--shadow-card);
+        overflow: hidden;
+    }
+
+    .sp-card-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-card);
+        display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .sp-card-title {
+        font-size: 15px; font-weight: 700; color: var(--text-primary);
+        display: flex; align-items: center; gap: 8px;
+    }
+
+    .sp-card-body {
+        padding: 20px;
     }
 
     .card-hover {
-        @apply card transition-all duration-200;
+        transition: all 0.2s; cursor: pointer;
     }
 
     .card-hover:hover {
-        @apply shadow-md -translate-y-0.5 border-slate-300 dark:border-slate-700;
+        border-color: var(--text-badge);
+        transform: translateY(-2px);
     }
 
-    .btn-primary {
-        @apply inline-flex items-center justify-center px-4 py-2.5 bg-crimson-600 hover:bg-crimson-700 active:bg-crimson-800 text-white font-medium rounded-xl transition-all duration-150 text-sm;
+    /* ── Buttons ────────────────────────────────────────────── */
+    .sp-btn-primary, .btn-primary {
+        background: var(--text-badge); color: #fff;
+        padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600;
+        transition: all .2s; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+    }
+    .sp-btn-primary:hover, .btn-primary:hover { opacity: 0.9; }
+    
+    .sp-btn-secondary, .btn-secondary {
+        background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-card);
+        padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600;
+        transition: all .2s; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+    }
+    .sp-btn-secondary:hover, .btn-secondary:hover { background: var(--bg-header); color: var(--text-primary); }
+
+    .btn-danger {
+        @apply inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-all duration-150 text-sm;
     }
 
-    .btn-secondary {
-        @apply inline-flex items-center justify-center px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded-xl transition-all duration-150 text-sm;
+    /* ── Tabs ───────────────────────────────────────────────── */
+    .sp-tabs {
+        display: flex; gap: 8px; margin-bottom: 16px;
+        overflow-x: auto;
     }
+    .sp-tab {
+        background: var(--bg-card);
+        border: 1px solid var(--border-card);
+        color: var(--text-secondary);
+        padding: 7px 16px; border-radius: 6px;
+        font-size: 13px; font-weight: 600; cursor: pointer;
+        transition: all .2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .sp-tab:hover { border-color: var(--text-badge); color: var(--text-badge); }
+    .sp-tab.active { background: var(--text-badge); border-color: var(--text-badge); color: #fff; }
 
-    .input-field {
-        @apply w-full px-4 py-2.5 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-crimson-500/30 focus:border-crimson-500 transition-all duration-150;
+    /* ── Inputs ─────────────────────────────────────────────── */
+    .sp-input, .input-field {
+        width: 100%; background: var(--bg-card); border: 1px solid var(--border-card); color: var(--text-primary); 
+        padding: 8px 12px; border-radius: 6px; font-size: 13px; outline: none; transition: border-color .2s;
     }
+    .sp-input:focus, .input-field:focus { border-color: var(--text-badge); }
+    .sp-input::placeholder { color: var(--text-muted); }
 
-    .badge {
-        @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-    }
+    /* ── Table ──────────────────────────────────────────────── */
+    .sp-table, .table-wrapper table { width: 100%; border-collapse: collapse; }
+    .sp-table thead tr, .table-wrapper thead { background: var(--bg-header); border-bottom: 1px solid var(--border-card); }
+    .sp-table th, .table-wrapper th { padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text-badge); white-space: nowrap; user-select: none; }
+    .sp-table td, .table-wrapper td { padding: 14px 16px; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-card); vertical-align: middle; }
+    .sp-table tbody tr.main-row, .table-wrapper tbody tr { cursor: pointer; transition: background .15s; }
+    .sp-table tbody tr.main-row:hover, .table-wrapper tbody tr:hover td { background: var(--bg-header-hover); }
+    .sp-table td.strong { color: var(--text-badge); font-weight: 600; }
+    
+    .sp-icon-stat { display: flex; align-items: center; gap: 6px; }
+    .sp-icon-stat i { font-size: 16px; color: var(--text-muted); }
 
-    .badge-success {
-        @apply badge bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400;
+    /* ── Badges ─────────────────────────────────────────────── */
+    .sp-badge, .badge {
+        padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;
     }
+    .sp-badge.approved, .badge-success { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .sp-badge.pending, .badge-warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+    .sp-badge.rejected, .badge-danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+    .sp-badge.info, .badge-info { background: var(--bg-badge); color: var(--text-badge); border: 1px solid var(--border-badge); }
 
-    .badge-warning {
-        @apply badge bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400;
-    }
+    /* ── Pagination ─────────────────────────────────────────── */
+    .sp-pagination { padding: 12px 16px; border-top: 1px solid var(--border-card); display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); }
+    .sp-page-btn { padding: 5px 14px; border-radius: 5px; font-size: 12px; font-weight: 600; border: 1px solid var(--border-card); cursor: pointer; transition: all .15s; background: var(--bg-card); color: var(--text-secondary); }
+    .sp-page-btn:hover:not(:disabled) { background: var(--text-badge); color: #fff; border-color: var(--text-badge); }
+    .sp-page-btn:disabled { opacity: .4; cursor: not-allowed; }
 
-    .badge-danger {
-        @apply badge bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400;
-    }
-
-    .badge-info {
-        @apply badge bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400;
-    }
-
-    .stat-card {
-        @apply card p-5 flex flex-col gap-1.5;
-    }
-
-    .stat-label {
-        @apply text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider;
-    }
-
-    .stat-value {
-        @apply text-2xl font-bold text-slate-900 dark:text-white;
-    }
+    /* ── Empty State ────────────────────────────────────────── */
+    .sp-empty { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .sp-empty i { font-size: 48px; color: var(--border-card); margin-bottom: 12px; display: block; }
 }
+
+/* ── Sidebar Navigation Item ────────────────────────────── */
+.nav-item {
+    display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; font-size: 14px; font-weight: 500; transition: all 0.15s; color: var(--text-secondary);
+}
+.nav-item:hover { background: var(--bg-header-hover); color: var(--text-primary); }
+.nav-item.active { background: var(--text-badge); color: #fff; box-shadow: 0 2px 8px rgba(81,140,229,0.35); }
+
+/* ── Utilities ─────────────────────────────────────────── */
+.sidebar-transition { transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+.tooltipright { position: relative; }

@@ -527,6 +527,3 @@ document.addEventListener('livewire:navigated', function() {
     setTimeout(() => { if (map) map.invalidateSize(); }, 500);
 });
 </script>
-</div>
-
-

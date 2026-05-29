@@ -7,8 +7,6 @@ use Livewire\WithPagination;
 new class extends Component {
     use WithPagination;
 
-    use WithPagination;
-
     public string $filter = 'all';
     public $selectedPirepId = null;
     public $editingPirepId = null;
@@ -96,138 +94,288 @@ new class extends Component {
     }
 }; ?>
 
-<div class="max-w-4xl mx-auto space-y-6">
-    <div class="flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">My PIREPs</h1>
-            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">All your Pilot Reports in one place.</p>
+@push('styles')
+<style>
+/* ══ SPTheme Dynamic Dark/Light Mode ══════════════════════ */
+:root {
+    --bg-page: #f8f9fa;
+    --bg-card: #ffffff;
+    --bg-header: #f1f3f5;
+    --bg-header-hover: rgba(81, 140, 229, 0.05);
+    --border-card: #e9ebec;
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-muted: #868e96;
+    --text-badge: #518ce5;
+    --shadow-card: 0 2px 4px rgba(0, 0, 0, .04);
+}
+
+.dark {
+    --bg-page: #1a1d2e;
+    --bg-card: #2b2f3e;
+    --bg-header: #23263a;
+    --bg-header-hover: rgba(81, 140, 229, 0.08);
+    --border-card: #3a3f54;
+    --text-primary: #e2e8f0;
+    --text-secondary: #a0a8c0;
+    --text-muted: #6b7280;
+    --text-badge: #518ce5;
+    --shadow-card: none;
+}
+
+body, main { background: var(--bg-page) !important; }
+
+.sp-wrap {
+    padding: 24px;
+    max-width: 1300px;
+    margin: 0 auto;
+    font-family: 'Inter', sans-serif;
+}
+
+.sp-title-area {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+    margin-bottom: 24px;
+}
+.sp-title {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 18px; font-weight: 700; color: var(--text-primary);
+    padding-bottom: 12px; border-bottom: 2px solid var(--text-badge);
+}
+
+.sp-btn-primary {
+    background: var(--text-badge); color: #fff;
+    padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600;
+    transition: all .2s; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+}
+.sp-btn-primary:hover { opacity: 0.9; }
+
+.sp-tabs {
+    display: flex; gap: 8px; margin-bottom: 16px;
+    overflow-x: auto;
+}
+.sp-tab {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    color: var(--text-secondary);
+    padding: 7px 16px; border-radius: 6px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: all .2s; white-space: nowrap;
+}
+.sp-tab:hover { border-color: var(--text-badge); color: var(--text-badge); }
+.sp-tab.active { background: var(--text-badge); border-color: var(--text-badge); color: #fff; }
+
+.sp-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 8px;
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+}
+
+.sp-table { width: 100%; border-collapse: collapse; }
+.sp-table thead tr { background: var(--bg-header); border-bottom: 1px solid var(--border-card); }
+.sp-table th { padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text-badge); white-space: nowrap; }
+.sp-table td { padding: 14px 16px; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-card); vertical-align: middle; }
+.sp-table tbody tr.main-row { cursor: pointer; transition: background .15s; }
+.sp-table tbody tr.main-row:hover { background: var(--bg-header-hover); }
+
+.sp-table td.strong { color: var(--text-badge); font-weight: 600; }
+.sp-icon-stat { display: flex; align-items: center; gap: 6px; }
+.sp-icon-stat i { font-size: 16px; color: var(--text-muted); }
+
+/* Badges */
+.sp-badge { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; display: inline-block; }
+.sp-badge.approved { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.sp-badge.pending { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.sp-badge.rejected { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+/* Details row */
+.sp-details-row td { padding: 0 !important; border-bottom: 1px solid var(--border-card); }
+.sp-details { background: var(--bg-header); padding: 20px; border-left: 3px solid var(--text-badge); }
+.sp-details-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; margin-bottom: 16px; }
+.sp-detail-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
+.sp-detail-label i { font-size: 14px; }
+.sp-detail-val { color: var(--text-primary); font-size: 13px; font-weight: 500; }
+
+.sp-input { width: 100%; background: var(--bg-card); border: 1px solid var(--border-card); color: var(--text-primary); padding: 8px 12px; border-radius: 6px; font-size: 13px; }
+.sp-input:focus { outline: none; border-color: var(--text-badge); }
+
+.sp-empty { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+.sp-empty i { font-size: 48px; color: var(--border-card); margin-bottom: 12px; }
+
+.sp-pagination { padding: 12px 16px; border-top: 1px solid var(--border-card); }
+</style>
+@endpush
+
+<div class="sp-wrap">
+    <div class="sp-title-area">
+        <div class="sp-title">
+            <i class="ph-fill ph-airplane-tilt"></i> My PIREPs
         </div>
-        <a href="{{ route('file-pirep') }}" wire:navigate class="btn-primary text-sm px-4 py-2">File New PIREP</a>
+        <a href="{{ route('file-pirep') }}" wire:navigate class="sp-btn-primary">
+            <i class="ph-bold ph-plus"></i> File New PIREP
+        </a>
     </div>
 
     {{-- Filter Tabs --}}
-    <div class="flex gap-2">
+    <div class="sp-tabs">
         @foreach(['all' => 'All', 'pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected'] as $key => $label)
-            <button wire:click="$set('filter', '{{ $key }}')"
-                class="px-4 py-1.5 rounded-xl text-sm font-medium transition-all duration-150 {{ $filter === $key ? 'bg-crimson-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700' }}">
+            <button wire:click="$set('filter', '{{ $key }}')" class="sp-tab {{ $filter === $key ? 'active' : '' }}">
                 {{ $label }}
             </button>
         @endforeach
     </div>
 
-    {{-- PIREP List --}}
-    <div class="space-y-2">
-        @forelse($pireps as $p)
-            <div wire:key="pirep-{{ $p->id }}">
-                <div class="card-hover p-4 flex items-center justify-between cursor-pointer" wire:click="toggleDetail({{ $p->id }})">
-                    <div class="flex items-center gap-4">
-                        <div>
-                            <p class="text-sm font-medium text-slate-900 dark:text-white">{{ $p->flight_number }}</p>
-                            <p class="text-xs text-slate-500">{{ $p->departure }} &rarr; {{ $p->arrival }}</p>
-                        </div>
-                        <div class="hidden sm:block text-xs text-slate-400">
-                            <p>{{ $p->aircraft_registration }} ({{ $p->aircraft_icao }})</p>
-                            <p>{{ number_format($p->flight_time, 2) }}h @if($p->landing_rate !== null) &middot; {{ $p->landing_rate }}fpm @endif</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <span class="text-xs text-slate-400 hidden sm:inline">{{ $p->submitted_at ? (\Carbon\Carbon::parse($p->submitted_at)->format('d M Y')) : (\Carbon\Carbon::parse($p->created_at)->format('d M Y')) }}</span>
-                        <span class="badge-{{ $p->status === 'approved' ? 'success' : ($p->status === 'rejected' ? 'danger' : 'warning') }}">
-                            {{ ucfirst($p->status) }}
-                        </span>
-                        <svg class="w-4 h-4 text-slate-400 transition-transform duration-200 {{ $selectedPirepId === $p->id ? 'rotate-180' : '' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
-                    </div>
-                </div>
-                @if($selectedPirepId === $p->id)
-                    @if($editingPirepId === $p->id)
-                        <div class="card rounded-t-none border-t-0 p-5 space-y-3 text-sm">
-                            <h3 class="font-semibold text-slate-900 dark:text-white">Edit PIREP</h3>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div class="space-y-1">
-                                    <label class="text-xs text-slate-400">Flight Time (hours)</label>
-                                    <input wire:model="editFlightTime" type="number" step="0.1" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm">
+    <div class="sp-card">
+        <div style="overflow-x:auto;">
+            <table class="sp-table">
+                <thead>
+                    <tr>
+                        <th>Flight</th>
+                        <th>Route</th>
+                        <th>Aircraft</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($pireps as $p)
+                        <tr class="main-row" wire:click="toggleDetail({{ $p->id }})">
+                            <td class="strong">{{ $p->flight_number }}</td>
+                            <td>
+                                <div class="sp-icon-stat">
+                                    <i class="ph-fill ph-map-pin"></i>
+                                    {{ $p->departure }} &rarr; {{ $p->arrival }}
                                 </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs text-slate-400">Landing Rate (fpm)</label>
-                                    <input wire:model="editLandingRate" type="number" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm">
+                            </td>
+                            <td>{{ $p->aircraft_icao }}</td>
+                            <td>
+                                <div class="sp-icon-stat">
+                                    <i class="ph-fill ph-clock"></i>
+                                    {{ number_format($p->flight_time, 2) }}h
                                 </div>
-                            </div>
-                            <div class="space-y-1">
-                                <label class="text-xs text-slate-400">Route String</label>
-                                <input wire:model="editRoute" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm">
-                            </div>
-                            <div class="space-y-1">
-                                <label class="text-xs text-slate-400">Flight Log</label>
-                                <textarea wire:model="editLog" rows="4" class="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm"></textarea>
-                            </div>
-                            <div class="flex gap-2">
-                                <button wire:click="updatePirep" class="btn-primary text-sm px-4 py-1.5">Save Changes</button>
-                                <button wire:click="cancelEdit" class="px-4 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-sm">Cancel</button>
-                            </div>
-                        </div>
-                    @else
-                        <div class="card rounded-t-none border-t-0 p-5 space-y-3 text-sm">
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                <div><span class="text-xs text-slate-400">Flight</span><p class="font-medium text-slate-900 dark:text-white">{{ $p->flight_number }}</p></div>
-                                <div><span class="text-xs text-slate-400">Route</span><p class="font-medium text-slate-900 dark:text-white">{{ $p->departure }} &rarr; {{ $p->arrival }}</p></div>
-                                <div><span class="text-xs text-slate-400">Time</span><p class="font-medium text-slate-900 dark:text-white">{{ number_format($p->flight_time, 2) }}h</p></div>
-                                <div>
-                                    <span class="text-xs text-slate-400">Landing Rate</span>
-                                    @if($p->landing_rate !== null)
-                                        @php $lr = abs($p->landing_rate); @endphp
-                                        <p class="font-medium {{ $lr <= 150 ? 'text-green-500' : ($lr <= 300 ? 'text-yellow-400' : 'text-red-500') }}">
-                                            {{ $p->landing_rate }} fpm
-                                        </p>
-                                    @else
-                                        <p class="font-medium text-slate-500">N/A</p>
-                                    @endif
+                            </td>
+                            <td>
+                                <span class="sp-badge {{ $p->status }}">
+                                    {{ ucfirst($p->status) }}
+                                </span>
+                            </td>
+                            <td>
+                                <div style="display:flex;align-items:center;justify-content:space-between;">
+                                    {{ $p->submitted_at ? \Carbon\Carbon::parse($p->submitted_at)->format('d M Y') : \Carbon\Carbon::parse($p->created_at)->format('d M Y') }}
+                                    <i class="ph-bold ph-caret-{{ $selectedPirepId === $p->id ? 'up' : 'down' }}" style="color:var(--text-muted);"></i>
                                 </div>
-                                <div><span class="text-xs text-slate-400">Aircraft</span><p class="font-medium text-slate-900 dark:text-white">{{ $p->aircraft_registration }} ({{ $p->aircraft_icao }})</p></div>
-                                <div><span class="text-xs text-slate-400">Score</span><p class="font-medium text-slate-900 dark:text-white">{{ $p->score }}</p></div>
-                                <div><span class="text-xs text-slate-400">Status</span><p class="font-medium">{{ ucfirst($p->status) }}</p></div>
-                                <div><span class="text-xs text-slate-400">Submitted</span><p class="font-medium text-slate-900 dark:text-white">{{ $p->submitted_at ? (\Carbon\Carbon::parse($p->submitted_at)->format('d M Y H:i')) : (\Carbon\Carbon::parse($p->created_at)->format('d M Y H:i')) }}</p></div>
-                            </div>
-                            @if($p->route)
-                                <div><span class="text-xs text-slate-400">Route String</span><p class="font-mono text-xs mt-1 text-slate-600 dark:text-slate-400">{{ $p->route }}</p></div>
-                            @endif
-                            @if($p->log)
-                                <div><span class="text-xs text-slate-400">Flight Log</span><p class="mt-1 text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{{ $p->log }}</p></div>
-                            @endif
-                            @if($p->rejection_reason)
-                                <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3">
-                                    <span class="text-xs font-semibold text-red-600 dark:text-red-400">Rejection Reason</span>
-                                    <p class="mt-1 text-sm text-red-700 dark:text-red-400">{{ $p->rejection_reason }}</p>
-                                </div>
-                            @endif
-                            @if($p->status === 'pending')
-                                <div class="pt-2 border-t border-slate-200 dark:border-slate-700 flex gap-3">
-                                    <button wire:click="editPirep({{ $p->id }})" class="text-xs text-crimson-600 dark:text-crimson-400 hover:underline font-medium">Edit PIREP</button>
-                                    <a href="{{ route('pireps.export', $p->id) }}" class="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium">Download</a>
-                                </div>
-                            @else
-                                <div class="pt-2 border-t border-slate-200 dark:border-slate-700">
-                                    <a href="{{ route('pireps.export', $p->id) }}" class="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium">Download as Text</a>
-                                </div>
-                            @endif
-                        </div>
-                    @endif
-                @endif
-            </div>
-        @empty
-            <div class="card p-8 text-center text-slate-400 dark:text-slate-500">
-                <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
-                </svg>
-                <p>No PIREPs found</p>
-                <a href="{{ route('file-pirep') }}" wire:navigate class="btn-primary mt-4 inline-flex">File your first PIREP</a>
-            </div>
-        @endforelse
-    </div>
+                            </td>
+                        </tr>
+                        @if($selectedPirepId === $p->id)
+                            <tr class="sp-details-row">
+                                <td colspan="6">
+                                    <div class="sp-details">
+                                        @if($editingPirepId === $p->id)
+                                            <div style="margin-bottom:16px;font-size:15px;font-weight:700;color:var(--text-primary);">Edit PIREP</div>
+                                            <div class="sp-details-grid">
+                                                <div>
+                                                    <div class="sp-detail-label">Flight Time (hours)</div>
+                                                    <input wire:model="editFlightTime" type="number" step="0.1" class="sp-input">
+                                                </div>
+                                                <div>
+                                                    <div class="sp-detail-label">Landing Rate (fpm)</div>
+                                                    <input wire:model="editLandingRate" type="number" class="sp-input">
+                                                </div>
+                                                <div style="grid-column: 1 / -1;">
+                                                    <div class="sp-detail-label">Route String</div>
+                                                    <input wire:model="editRoute" type="text" class="sp-input">
+                                                </div>
+                                                <div style="grid-column: 1 / -1;">
+                                                    <div class="sp-detail-label">Flight Log</div>
+                                                    <textarea wire:model="editLog" rows="3" class="sp-input"></textarea>
+                                                </div>
+                                            </div>
+                                            <div style="display:flex;gap:10px;">
+                                                <button wire:click="updatePirep" class="sp-btn-primary">Save Changes</button>
+                                                <button wire:click="cancelEdit" class="sp-tab">Cancel</button>
+                                            </div>
+                                        @else
+                                            <div class="sp-details-grid">
+                                                <div>
+                                                    <div class="sp-detail-label"><i class="ph-fill ph-airplane-landing"></i> Landing Rate</div>
+                                                    <div class="sp-detail-val">
+                                                        @if($p->landing_rate !== null)
+                                                            @php $lr = abs($p->landing_rate); @endphp
+                                                            <span style="color: {{ $lr <= 150 ? '#10b981' : ($lr <= 300 ? '#f59e0b' : '#ef4444') }}">
+                                                                {{ $p->landing_rate }} fpm
+                                                            </span>
+                                                        @else
+                                                            <span style="color:var(--text-muted);">N/A</span>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div class="sp-detail-label"><i class="ph-fill ph-star"></i> Score</div>
+                                                    <div class="sp-detail-val">{{ $p->score }}</div>
+                                                </div>
+                                                <div>
+                                                    <div class="sp-detail-label"><i class="ph-fill ph-airplane-tilt"></i> Registration</div>
+                                                    <div class="sp-detail-val">{{ $p->aircraft_registration }}</div>
+                                                </div>
+                                            </div>
+                                            
+                                            @if($p->route)
+                                                <div style="margin-top:16px;">
+                                                    <div class="sp-detail-label"><i class="ph-fill ph-map-trifold"></i> Route String</div>
+                                                    <div class="sp-detail-val" style="font-family:monospace;background:var(--bg-card);padding:10px;border-radius:4px;border:1px solid var(--border-card);">
+                                                        {{ $p->route }}
+                                                    </div>
+                                                </div>
+                                            @endif
+                                            
+                                            @if($p->log)
+                                                <div style="margin-top:16px;">
+                                                    <div class="sp-detail-label"><i class="ph-fill ph-article"></i> Flight Log</div>
+                                                    <div class="sp-detail-val" style="white-space:pre-wrap;font-size:12px;background:var(--bg-card);padding:10px;border-radius:4px;border:1px solid var(--border-card);">{{ $p->log }}</div>
+                                                </div>
+                                            @endif
 
-    {{-- Pagination --}}
-    @if($pireps->hasPages())
-        <div class="mt-4">
-            {{ $pireps->links() }}
+                                            @if($p->rejection_reason)
+                                                <div style="margin-top:16px;background:rgba(239,68,68,0.1);padding:12px;border-radius:6px;border:1px solid rgba(239,68,68,0.2);">
+                                                    <div class="sp-detail-label" style="color:#ef4444;"><i class="ph-fill ph-warning-circle"></i> Rejection Reason</div>
+                                                    <div style="color:#ef4444;font-size:13px;font-weight:500;">{{ $p->rejection_reason }}</div>
+                                                </div>
+                                            @endif
+
+                                            <div style="margin-top:20px;display:flex;gap:12px;align-items:center;border-top:1px solid var(--border-card);padding-top:16px;">
+                                                @if($p->status === 'pending')
+                                                    <button wire:click="editPirep({{ $p->id }})" class="sp-btn-primary" style="padding:6px 12px;font-size:12px;">Edit PIREP</button>
+                                                @endif
+                                                <a href="{{ route('pireps.export', $p->id) }}" style="font-size:12px;font-weight:600;color:var(--text-muted);text-decoration:none;display:flex;align-items:center;gap:4px;">
+                                                    <i class="ph-bold ph-download-simple"></i> Download
+                                                </a>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                        @endif
+                    @empty
+                        <tr>
+                            <td colspan="6">
+                                <div class="sp-empty">
+                                    <i class="ph-fill ph-airplane-tilt"></i>
+                                    <div style="font-size:15px;font-weight:700;color:var(--text-primary);">No PIREPs Found</div>
+                                    <div style="font-size:13px;margin-top:4px;">You haven't filed any PIREPs matching this filter yet.</div>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
-    @endif
+        
+        @if($pireps->hasPages())
+            <div class="sp-pagination">
+                {{ $pireps->links() }}
+            </div>
+        @endif
+    </div>
 </div>

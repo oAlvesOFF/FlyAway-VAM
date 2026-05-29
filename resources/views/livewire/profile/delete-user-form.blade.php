@@ -23,56 +23,45 @@ new class extends Component
     }
 }; ?>
 
-<section class="space-y-6">
-    <header>
-        <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+<section>
+    <header class="pf-section-header">
+        <h2 class="pf-section-title" style="color: #ef4444;">
             {{ __('Delete Account') }}
         </h2>
-
-        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+        <p class="pf-section-desc">
             {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Before deleting your account, please download any data or information that you wish to retain.') }}
         </p>
     </header>
 
-    <x-danger-button
-        x-data=""
-        x-on:click.prevent="$dispatch('open-modal', 'confirm-user-deletion')"
-    >{{ __('Delete Account') }}</x-danger-button>
+    <button type="button" x-data="" x-on:click.prevent="$dispatch('open-modal', 'confirm-user-deletion')" class="pf-btn pf-btn-danger">
+        <i class="ph-bold ph-trash"></i> {{ __('Delete Account') }}
+    </button>
 
     <x-modal name="confirm-user-deletion" :show="$errors->isNotEmpty()" focusable>
-        <form wire:submit="deleteUser" class="p-6">
+        <form wire:submit="deleteUser" style="padding: 24px; background: var(--bg-card); color: var(--text-primary); border-radius: 8px;">
 
-            <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+            <h2 style="font-size: 18px; font-weight: 800; color: #ef4444; margin-bottom: 8px;">
                 {{ __('Are you sure you want to delete your account?') }}
             </h2>
 
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 24px;">
                 {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.') }}
             </p>
 
-            <div class="mt-6">
-                <x-input-label for="password" value="{{ __('Password') }}" class="sr-only" />
-
-                <x-text-input
-                    wire:model="password"
-                    id="password"
-                    name="password"
-                    type="password"
-                    class="mt-1 block w-3/4"
-                    placeholder="{{ __('Password') }}"
-                />
-
-                <x-input-error :messages="$errors->get('password')" class="mt-2" />
+            <div class="pf-form-group">
+                <label for="password" class="pf-label">{{ __('Password') }}</label>
+                <input wire:model="password" id="password" type="password" class="pf-input" placeholder="{{ __('Enter your password') }}" />
+                <x-input-error :messages="$errors->get('password')" class="pf-error" />
             </div>
 
-            <div class="mt-6 flex justify-end">
-                <x-secondary-button x-on:click="$dispatch('close')">
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+                <button type="button" x-on:click="$dispatch('close')" class="pf-btn pf-btn-secondary">
                     {{ __('Cancel') }}
-                </x-secondary-button>
+                </button>
 
-                <x-danger-button class="ms-3">
+                <button type="submit" class="pf-btn pf-btn-danger">
                     {{ __('Delete Account') }}
-                </x-danger-button>
+                </button>
             </div>
         </form>
     </x-modal>

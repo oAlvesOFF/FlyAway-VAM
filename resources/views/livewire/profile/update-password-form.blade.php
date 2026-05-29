@@ -39,40 +39,41 @@ new class extends Component
 }; ?>
 
 <section>
-    <header>
-        <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+    <header class="pf-section-header">
+        <h2 class="pf-section-title">
             {{ __('Update Password') }}
         </h2>
-
-        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+        <p class="pf-section-desc">
             {{ __('Ensure your account is using a long, random password to stay secure.') }}
         </p>
     </header>
 
-    <form wire:submit="updatePassword" class="mt-6 space-y-6">
-        <div>
-            <x-input-label for="update_password_current_password" :value="__('Current Password')" />
-            <x-text-input wire:model="current_password" id="update_password_current_password" name="current_password" type="password" class="mt-1 block w-full" autocomplete="current-password" />
-            <x-input-error :messages="$errors->get('current_password')" class="mt-2" />
+    <form wire:submit="updatePassword">
+        <div class="pf-form-group">
+            <label for="update_password_current_password" class="pf-label">{{ __('Current Password') }}</label>
+            <input wire:model="current_password" id="update_password_current_password" type="password" class="pf-input" autocomplete="current-password" />
+            <x-input-error :messages="$errors->get('current_password')" class="pf-error" />
         </div>
 
-        <div>
-            <x-input-label for="update_password_password" :value="__('New Password')" />
-            <x-text-input wire:model="password" id="update_password_password" name="password" type="password" class="mt-1 block w-full" autocomplete="new-password" />
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
+        <div class="pf-form-group">
+            <label for="update_password_password" class="pf-label">{{ __('New Password') }}</label>
+            <input wire:model="password" id="update_password_password" type="password" class="pf-input" autocomplete="new-password" />
+            <x-input-error :messages="$errors->get('password')" class="pf-error" />
         </div>
 
-        <div>
-            <x-input-label for="update_password_password_confirmation" :value="__('Confirm Password')" />
-            <x-text-input wire:model="password_confirmation" id="update_password_password_confirmation" name="password_confirmation" type="password" class="mt-1 block w-full" autocomplete="new-password" />
-            <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
+        <div class="pf-form-group">
+            <label for="update_password_password_confirmation" class="pf-label">{{ __('Confirm Password') }}</label>
+            <input wire:model="password_confirmation" id="update_password_password_confirmation" type="password" class="pf-input" autocomplete="new-password" />
+            <x-input-error :messages="$errors->get('password_confirmation')" class="pf-error" />
         </div>
 
-        <div class="flex items-center gap-4">
-            <x-primary-button>{{ __('Save') }}</x-primary-button>
+        <div style="display: flex; align-items: center; gap: 16px; margin-top: 24px;">
+            <button type="submit" class="pf-btn">
+                <i class="ph-bold ph-lock-key"></i> {{ __('Save Password') }}
+            </button>
 
-            <x-action-message class="me-3" on="password-updated">
-                {{ __('Saved.') }}
+            <x-action-message on="password-updated" style="color: #10b981; font-size: 13px; font-weight: 600;">
+                <i class="ph-bold ph-check"></i> {{ __('Saved.') }}
             </x-action-message>
         </div>
     </form>
