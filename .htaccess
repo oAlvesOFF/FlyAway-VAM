@@ -1,0 +1,12 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Redirect all requests to the public directory
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# PHP 8.2 (comum em cPanel)
+<IfModule mime_module>
+    AddHandler application/x-httpd-ea-php82 .php
+</IfModule>

@@ -1,0 +1,19 @@
+[package]
+name = "sim-msfs"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["ASA-ACARS contributors", "noxxr"]
+description = "MSFS 2020/2024 simulator adapter — raw SimConnect FFI (Windows only). Never FSUIPC."
+build = "build.rs"
+
+[dependencies]
+sim-core = { path = "../sim-core" }
+serde = { version = "1", features = ["derive"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"
+tracing = "0.1"
+tokio = { version = "1", features = ["sync", "rt", "time", "macros"] }
+
+[target.'cfg(target_os = "windows")'.build-dependencies]
+bindgen = "0.69"

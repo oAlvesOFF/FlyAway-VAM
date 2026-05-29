@@ -1,0 +1,584 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Atlantic Star Airways API",
+        "description": "REST API for the Atlantic Star Airways Virtual Airline Management System. Provides endpoints for PIREP management, aircraft/schedule data, and real-time flight tracking.",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "/",
+            "description": "Local Development Server"
+        }
+    ],
+    "paths": {
+        "/api/aircraft": {
+            "get": {
+                "tags": [
+                    "Aircraft"
+                ],
+                "summary": "List aircraft",
+                "description": "Returns all registered aircraft in the fleet. Requires API authentication.",
+                "operationId": "abf56318e283380a5a39c8669c31c47b",
+                "responses": {
+                    "200": {
+                        "description": "List of aircraft",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Aircraft"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "apiAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/schedules": {
+            "get": {
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "List schedules",
+                "description": "Returns all flight schedules. Requires API authentication.",
+                "operationId": "59392c78ccc811c7aa4841fe0a73efb1",
+                "responses": {
+                    "200": {
+                        "description": "List of schedules",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Schedule"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "apiAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/flights/active": {
+            "get": {
+                "tags": [
+                    "Flights"
+                ],
+                "summary": "Get active flights",
+                "description": "Returns all currently active (in-progress) flights with real-time telemetry data. Public endpoint, no auth required.",
+                "operationId": "39f7722079d4375146387d052da12f4d",
+                "responses": {
+                    "200": {
+                        "description": "List of active flights",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ActiveFlight"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/flights/track": {
+            "post": {
+                "tags": [
+                    "Flights"
+                ],
+                "summary": "Update flight position",
+                "description": "Updates the real-time position and telemetry of an active flight. Requires API authentication.",
+                "operationId": "7986452573c51c39292a5f1aba8bafc9",
+                "responses": {
+                    "201": {
+                        "description": "Flight position updated"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "apiAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/flights/{flight}/complete": {
+            "post": {
+                "tags": [
+                    "Flights"
+                ],
+                "summary": "Complete a flight",
+                "description": "Marks an active flight as completed. Requires API authentication.",
+                "operationId": "bb852f5e8e56aab27ed963ab241ac771",
+                "parameters": [
+                    {
+                        "name": "flight",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Flight completed"
+                    },
+                    "404": {
+                        "description": "Flight not found"
+                    }
+                },
+                "security": [
+                    {
+                        "apiAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/pireps": {
+            "get": {
+                "tags": [
+                    "PIREPs"
+                ],
+                "summary": "List PIREPs",
+                "description": "Returns a paginated list of PIREPs, optionally filtered by status. Requires API authentication.",
+                "operationId": "ac91a0ef9e36b2d496c9f044ffe9624e",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pending",
+                                "approved",
+                                "rejected"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated PIREP list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Pirep"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "apiAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "PIREPs"
+                ],
+                "summary": "File a PIREP",
+                "description": "Creates a new PIREP. Score is auto-calculated from landing rate. Requires API authentication.",
+                "operationId": "4a6df0cede383df4c433b0afe6da3ce2",
+                "responses": {
+                    "201": {
+                        "description": "PIREP created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Pirep"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "apiAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/pireps/{pirep}": {
+            "get": {
+                "tags": [
+                    "PIREPs"
+                ],
+                "summary": "Get PIREP details",
+                "description": "Returns a single PIREP with full details. Requires API authentication.",
+                "operationId": "21ab8390601117e1882055b29e455f59",
+                "parameters": [
+                    {
+                        "name": "pirep",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PIREP details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Pirep"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "apiAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/pireps/{pirep}/approve": {
+            "post": {
+                "tags": [
+                    "PIREPs"
+                ],
+                "summary": "Approve a PIREP",
+                "description": "Approves a pending PIREP. Updates pilot hours, flights count, rank, and aircraft location. Sends notification. Requires API authentication.",
+                "operationId": "fffd9f3146302106deb68fcd1fb64944",
+                "parameters": [
+                    {
+                        "name": "pirep",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PIREP approved"
+                    },
+                    "404": {
+                        "description": "PIREP not found"
+                    }
+                },
+                "security": [
+                    {
+                        "apiAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/pireps/{pirep}/reject": {
+            "post": {
+                "tags": [
+                    "PIREPs"
+                ],
+                "summary": "Reject a PIREP",
+                "description": "Rejects a pending PIREP. Sends notification to pilot. Requires API authentication.",
+                "operationId": "fdef053c7591a61572eff3669469df1f",
+                "parameters": [
+                    {
+                        "name": "pirep",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PIREP rejected"
+                    },
+                    "404": {
+                        "description": "PIREP not found"
+                    }
+                },
+                "security": [
+                    {
+                        "apiAuth": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Pirep": {
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "user_id": {
+                        "type": "integer"
+                    },
+                    "flight_number": {
+                        "type": "string"
+                    },
+                    "departure": {
+                        "type": "string",
+                        "maxLength": 4
+                    },
+                    "arrival": {
+                        "type": "string",
+                        "maxLength": 4
+                    },
+                    "aircraft_registration": {
+                        "type": "string"
+                    },
+                    "aircraft_icao": {
+                        "type": "string"
+                    },
+                    "flight_time": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "landing_rate": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "score": {
+                        "type": "integer"
+                    },
+                    "route": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "approved",
+                            "rejected"
+                        ]
+                    },
+                    "log": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "submitted_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "Aircraft": {
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "registration": {
+                        "type": "string"
+                    },
+                    "icao": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "location": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "Schedule": {
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "flight_number": {
+                        "type": "string"
+                    },
+                    "departure": {
+                        "type": "string",
+                        "maxLength": 4
+                    },
+                    "arrival": {
+                        "type": "string",
+                        "maxLength": 4
+                    },
+                    "route": {
+                        "type": "string"
+                    },
+                    "aircraft_type": {
+                        "type": "string"
+                    },
+                    "flight_time": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "departure_time": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "altitude": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "ActiveFlight": {
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "flight_number": {
+                        "type": "string"
+                    },
+                    "aircraft_registration": {
+                        "type": "string"
+                    },
+                    "aircraft_icao": {
+                        "type": "string"
+                    },
+                    "aircraft_type": {
+                        "type": "string"
+                    },
+                    "departure": {
+                        "type": "string"
+                    },
+                    "arrival": {
+                        "type": "string"
+                    },
+                    "current_lat": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "current_lng": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "heading": {
+                        "type": "integer"
+                    },
+                    "altitude": {
+                        "type": "integer"
+                    },
+                    "ground_speed": {
+                        "type": "integer"
+                    },
+                    "phase": {
+                        "type": "string",
+                        "enum": [
+                            "preflight",
+                            "boarding",
+                            "departed",
+                            "enroute",
+                            "onapproach",
+                            "landed"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "active",
+                            "completed"
+                        ]
+                    },
+                    "started_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "position_updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "apiAuth": {
+                "type": "http",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Aircraft",
+            "description": "Aircraft"
+        },
+        {
+            "name": "Schedules",
+            "description": "Schedules"
+        },
+        {
+            "name": "Flights",
+            "description": "Flights"
+        },
+        {
+            "name": "PIREPs",
+            "description": "PIREPs"
+        }
+    ]
+}
