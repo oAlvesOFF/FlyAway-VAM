@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/images/logo.png" alt="FlyAway-VAM Logo" width="180"/>
+  <img src="/logo_ico.png" alt="FlyAway-VAM Logo" width="180"/>
 </p>
 
 <h1 align="center">✈️ FlyAway-VAM</h1>
