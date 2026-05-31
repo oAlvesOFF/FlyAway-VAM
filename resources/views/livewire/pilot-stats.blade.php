@@ -130,13 +130,17 @@ new class extends Component {
         {{-- Monthly Hours Chart --}}
         <div class="card p-5">
             <h3 class="text-sm font-semibold text-slate-900 dark:text-white mb-3">Monthly Flight Hours (12mo)</h3>
-            <canvas id="monthlyHoursChart" height="200"></canvas>
+            <div style="position: relative; height: 220px; width: 100%;">
+                <canvas id="monthlyHoursChart"></canvas>
+            </div>
         </div>
 
         {{-- Score Trend --}}
         <div class="card p-5">
             <h3 class="text-sm font-semibold text-slate-900 dark:text-white mb-3">Score Trend (Last 20)</h3>
-            <canvas id="scoreTrendChart" height="200"></canvas>
+            <div style="position: relative; height: 220px; width: 100%;">
+                <canvas id="scoreTrendChart"></canvas>
+            </div>
         </div>
     </div>
 

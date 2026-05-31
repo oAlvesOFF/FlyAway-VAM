@@ -317,11 +317,15 @@ new class extends Component {
     <div class="grid lg:grid-cols-2 gap-4">
         <div class="card p-5">
             <h3 class="text-sm font-semibold text-slate-900 dark:text-white mb-3">PIREP Status Breakdown</h3>
-            <canvas id="pirepChart" height="200"></canvas>
+            <div style="position: relative; height: 220px; width: 100%;">
+                <canvas id="pirepChart"></canvas>
+            </div>
         </div>
         <div class="card p-5">
             <h3 class="text-sm font-semibold text-slate-900 dark:text-white mb-3">Flights Last 7 Days</h3>
-            <canvas id="weeklyChart" height="200"></canvas>
+            <div style="position: relative; height: 220px; width: 100%;">
+                <canvas id="weeklyChart"></canvas>
+            </div>
         </div>
     </div>
 
@@ -329,11 +333,15 @@ new class extends Component {
     <div class="grid lg:grid-cols-2 gap-4">
         <div class="card p-5">
             <h3 class="text-sm font-semibold text-slate-900 dark:text-white mb-3">Monthly Flight Hours (6 Months)</h3>
-            <canvas id="monthlyHoursChart" height="200"></canvas>
+            <div style="position: relative; height: 220px; width: 100%;">
+                <canvas id="monthlyHoursChart"></canvas>
+            </div>
         </div>
         <div class="card p-5">
             <h3 class="text-sm font-semibold text-slate-900 dark:text-white mb-3">Pilot Registrations</h3>
-            <canvas id="registrationsChart" height="200"></canvas>
+            <div style="position: relative; height: 220px; width: 100%;">
+                <canvas id="registrationsChart"></canvas>
+            </div>
         </div>
     </div>
 
@@ -341,11 +349,15 @@ new class extends Component {
     <div class="grid lg:grid-cols-2 gap-4">
         <div class="card p-5">
             <h3 class="text-sm font-semibold text-slate-900 dark:text-white mb-3">Top 8 Routes</h3>
-            <canvas id="topRoutesChart" height="200"></canvas>
+            <div style="position: relative; height: 220px; width: 100%;">
+                <canvas id="topRoutesChart"></canvas>
+            </div>
         </div>
         <div class="card p-5">
             <h3 class="text-sm font-semibold text-slate-900 dark:text-white mb-3">Aircraft Category Distribution</h3>
-            <canvas id="aircraftCategoryChart" height="200"></canvas>
+            <div style="position: relative; height: 220px; width: 100%;">
+                <canvas id="aircraftCategoryChart"></canvas>
+            </div>
         </div>
     </div>
 
@@ -355,7 +367,9 @@ new class extends Component {
             <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Fleet Utilization — Top 10 Aircraft</h3>
             <span class="text-xs text-slate-400">Approved PIREPs only</span>
         </div>
-        <canvas id="fleetUtilChart" height="200"></canvas>
+        <div style="position: relative; height: 220px; width: 100%;">
+            <canvas id="fleetUtilChart"></canvas>
+        </div>
     </div>
 
     {{-- Quick Actions --}}

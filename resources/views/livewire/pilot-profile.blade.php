@@ -620,7 +620,7 @@ body, main { background: var(--bg-page) !important; }
             <div style="min-width:0;display:flex;flex-direction:column;gap:16px;">
                 {{-- Banner --}}
                 <div style="background:var(--bg-header);border:1px solid var(--border-card);border-radius:8px;height:120px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px;letter-spacing:.05em;overflow:hidden;">
-                    <i class="ph-fill ph-image" style="font-size:32px;margin-right:8px;"></i> Profile Banner
+                    <img src="https://iili.io/C3xUzLF.png" alt="Profile Banner" style="width:100%;height:100%;object-fit:cover;">
                 </div>
 
                 {{-- Biography --}}

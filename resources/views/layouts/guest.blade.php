@@ -11,6 +11,7 @@
               if (this.darkMode) document.documentElement.classList.add('dark');
           }
       }"
+      x-on:livewire:navigated.window="if (darkMode) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark');"
       :class="{ 'dark': darkMode }"
       class="antialiased">
 <head>
@@ -28,11 +29,7 @@
         {{-- Logo Area --}}
         <div class="mb-6">
             <a href="/" wire:navigate class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-crimson-600 flex items-center justify-center">
-                    <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-                    </svg>
-                </div>
+                <img src="https://iili.io/C32u0Ff.png" alt="Logo" class="w-10 h-10 rounded-xl object-cover">
                 <span class="text-2xl font-bold text-slate-900 dark:text-white">Atlantic Star</span>
             </a>
         </div>
