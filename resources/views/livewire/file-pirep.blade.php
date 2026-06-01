@@ -17,6 +17,7 @@ new class extends Component {
     public $landing_rate = '';
     public $route = '';
     public $log = '';
+    public $simbrief_id = '';
 
     public function mount(): void
     {
@@ -42,6 +43,24 @@ new class extends Component {
         $this->aircraft_icao = $bid->aircraft->icao;
         $this->flight_time = $bid->schedule->flight_time;
         $this->route = $bid->schedule->route ?? '';
+        $this->simbrief_id = '';
+
+        if (!empty($bid->simbrief_ofp)) {
+            $ofp = is_array($bid->simbrief_ofp) ? $bid->simbrief_ofp : json_decode($bid->simbrief_ofp, true);
+            if ($ofp) {
+                $this->flight_number = $ofp['flight_number'] ?? $this->flight_number;
+                $this->departure = $ofp['departure'] ?? $this->departure;
+                $this->arrival = $ofp['arrival'] ?? $this->arrival;
+                $this->route = $ofp['route_raw'] ?? $this->route;
+                $this->aircraft_icao = $ofp['aircraft_icao'] ?? $this->aircraft_icao;
+                if (!empty($ofp['aircraft_reg'])) {
+                    $this->aircraft_registration = $ofp['aircraft_reg'];
+                }
+                if (!empty($ofp['simbrief_id'])) {
+                    $this->simbrief_id = $ofp['simbrief_id'];
+                }
+            }
+        }
     }
 
     public function submit(): void
@@ -77,7 +96,7 @@ new class extends Component {
         $threshold = (int) Setting::get('auto_approve_threshold', 90);
         $status = $score >= $threshold ? 'approved' : 'pending';
 
-        Pirep::create([
+        $pirep = Pirep::create([
             'user_id' => auth()->id(),
             'flight_number' => $this->flight_number,
             'departure' => strtoupper($this->departure),
@@ -92,6 +111,14 @@ new class extends Component {
             'status' => $status,
             'submitted_at' => now(),
         ]);
+
+        if ($this->simbrief_id) {
+            $simbrief = \App\Models\SimBrief::find($this->simbrief_id);
+            if ($simbrief) {
+                $simbrief->pirep_id = $pirep->id;
+                $simbrief->save();
+            }
+        }
 
         // Remove the bid after filing
         if ($this->selectedBidId) {
@@ -120,6 +147,7 @@ new class extends Component {
         $this->landing_rate = '';
         $this->route = '';
         $this->log = '';
+        $this->simbrief_id = '';
     }
 }; ?>
 

@@ -7,10 +7,27 @@ use std::sync::Arc;
 use std::time::Duration;
 use tauri::{Emitter, Manager};
 use tokio::sync::RwLock;
+use std::path::PathBuf;
+use tokio::fs;
 use api::{ActiveFlightRecord, AircraftRecord, ApiClient, BidRecord, FlightTelemetry, PirepRecord, PirepSubmitRequest, ScheduleRecord, UserInfo};
 use flight_manager::{FlightManager, FlightPhase};
 use landing_analyser::LandingAnalyser;
 use simulators::msfs::SimConnection;
+
+async fn load_queue(path: &PathBuf) -> Vec<FlightTelemetry> {
+    if let Ok(data) = fs::read_to_string(path).await {
+        serde_json::from_str(&data).unwrap_or_default()
+    } else {
+        Vec::new()
+    }
+}
+
+async fn save_queue(path: &PathBuf, queue: &Vec<FlightTelemetry>) {
+    if let Ok(data) = serde_json::to_string(queue) {
+        let _ = fs::write(path, data).await;
+    }
+}
+
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct FlightContext {
@@ -80,6 +97,12 @@ pub fn run() {
                 let mut last_phase = None;
                 let mut last_sim_state = String::new();
                 let mut last_perf_log = std::time::Instant::now();
+                
+                let local_data_dir = app_handle.path().app_local_data_dir().unwrap_or_else(|_| std::env::temp_dir());
+                let _ = fs::create_dir_all(&local_data_dir).await;
+                let queue_path = local_data_dir.join("telemetry_queue.json");
+                let mut telemetry_queue = load_queue(&queue_path).await;
+
 
                 loop {
                     let sim: tauri::State<'_, SimConnection> = app_handle.state();
@@ -130,7 +153,7 @@ pub fn run() {
                         let laravel_phase = match phase {
                             FlightPhase::Preflight => "preflight",
                             FlightPhase::Pushback | FlightPhase::TaxiOut | FlightPhase::Takeoff => "departed",
-                            FlightPhase::Climb | FlightPhase::Cruise | FlightPhase::Descent => "enroute",
+                            FlightPhase::Climb | FlightPhase::Cruise | FlightPhase::Descent | FlightPhase::GoAround => "enroute",
                             FlightPhase::Approach => "onapproach",
                             FlightPhase::Landing | FlightPhase::TaxiIn | FlightPhase::Shutdown => "landed",
                         };
@@ -193,9 +216,45 @@ pub fn run() {
 
                         if has_ctx {
                             if let Some(ref api_key) = key {
-                                if let Err(e) = api_client.update_flight_position(api_key, &telemetry).await {
-                                    eprintln!("[tracking] Failed to update flight position: {}", e);
+                                // Add current telemetry to queue
+                                telemetry_queue.push(telemetry);
+                                
+                                // Limit queue size to avoid massive memory/disk usage on very long offline periods
+                                // (1000 items is ~16 mins of data at 1Hz, sufficient for tracking gaps)
+                                if telemetry_queue.len() > 1000 {
+                                    telemetry_queue.remove(0);
                                 }
+                                
+                                let mut queue_modified = true;
+                                
+                                // Try to flush the queue (oldest first)
+                                // We send up to 5 items per iteration to catch up quickly when online
+                                let mut sent_count = 0;
+                                while !telemetry_queue.is_empty() && sent_count < 5 {
+                                    let item_to_send = telemetry_queue[0].clone();
+                                    match api_client.update_flight_position(api_key, &item_to_send).await {
+                                        Ok(_) => {
+                                            telemetry_queue.remove(0);
+                                            sent_count += 1;
+                                            queue_modified = true;
+                                        }
+                                        Err(e) => {
+                                            if e.starts_with("NETWORK_ERROR") || e.starts_with("SERVER_ERROR") {
+                                                eprintln!("[tracking] Network/Server offline, keeping in queue: {}", e);
+                                            } else {
+                                                eprintln!("[tracking] Client error, discarding telemetry: {}", e);
+                                                telemetry_queue.remove(0);
+                                                queue_modified = true;
+                                            }
+                                            break; // Stop flushing on first error
+                                        }
+                                    }
+                                }
+                                
+                                if queue_modified {
+                                    save_queue(&queue_path, &telemetry_queue).await;
+                                }
+
                             } else {
                                 eprintln!("[tracking] No API key found in state");
                             }
@@ -319,6 +378,9 @@ async fn complete_flight_with_pirep(
     
     let landing_rate = s.landing_analyser.metrics.as_ref()
         .map(|m| m.vertical_speed_at_touchdown as i32);
+
+    let flare_profile = s.landing_analyser.metrics.as_ref()
+        .map(|m| m.flare_profile.clone());
     
     let logs = s.flight_logs.clone();
     
@@ -347,9 +409,10 @@ async fn complete_flight_with_pirep(
     
     drop(s);
     
-    let result = get_api_client().submit_pirep(&key, &pirep_req).await;
+    let mut result = get_api_client().submit_pirep(&key, &pirep_req).await;
     
-    if result.is_ok() {
+    if let Ok(ref mut r) = result {
+        r.flare_profile = flare_profile;
         let mut s_write = state.write().await;
         s_write.flight_logs.clear();
         s_write.landing_analyser = LandingAnalyser::new();

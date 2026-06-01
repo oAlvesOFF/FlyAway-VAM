@@ -128,6 +128,8 @@ pub struct PirepRecord {
     pub submitted_at: Option<String>,
     #[serde(default)]
     pub user: Option<UserInfo>,
+    #[serde(default)]
+    pub flare_profile: Option<Vec<crate::landing_analyser::FlareDataPoint>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -349,15 +351,24 @@ impl ApiClient {
             sanitized.arrival = sanitized.arrival[..4].to_string();
         }
 
-        let response = self.client
+        let response = match self.client
             .post(format!("{}/api/flights/track", self.base_url))
             .header("Authorization", self.auth_header(api_key))
             .json(&sanitized)
             .send()
-            .await
-            .map_err(|e| format!("track request failed: {}", e))?;
+            .await {
+                Ok(r) => r,
+                Err(e) => return Err(format!("NETWORK_ERROR: {}", e)),
+            };
+
         if !response.status().is_success() {
-            return Err(self.handle_error_response(response).await);
+            let status = response.status();
+            let msg = self.handle_error_response(response).await;
+            if status.is_server_error() {
+                return Err(format!("SERVER_ERROR: {}", msg));
+            } else {
+                return Err(format!("CLIENT_ERROR: {}", msg));
+            }
         }
         Ok(())
     }

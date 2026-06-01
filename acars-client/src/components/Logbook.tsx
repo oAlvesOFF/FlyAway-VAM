@@ -1,20 +1,7 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { BookOpen, Plane } from 'lucide-react';
-
-interface PirepRecord {
-  id: number;
-  flight_number: string;
-  departure: string;
-  arrival: string;
-  aircraft_registration: string;
-  aircraft_icao: string;
-  flight_time: number;
-  landing_rate: number | null;
-  score: number | null;
-  status: string;
-  submitted_at: string | null;
-}
+import { getLocalFlights, PirepRecord } from '../services/store';
 
 export const Logbook = () => {
   const [flights, setFlights] = useState<PirepRecord[]>([]);
@@ -22,15 +9,37 @@ export const Logbook = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    invoke<PirepRecord[]>('fetch_pireps')
-      .then(data => {
-        setFlights(Array.isArray(data) ? data : []);
+    async function loadData() {
+      try {
+        const local = await getLocalFlights();
+        
+        let server: PirepRecord[] = [];
+        try {
+          const data = await invoke<PirepRecord[]>('fetch_pireps');
+          server = Array.isArray(data) ? data : [];
+        } catch (err) {
+          setError(typeof err === 'string' ? err : 'Failed to load server flights');
+        }
+
+        // Merge flights: prefer local, then add server ones not in local
+        const merged = [...local];
+        for (const sf of server) {
+          if (!merged.find(lf => lf.id === sf.id)) {
+            merged.push(sf);
+          }
+        }
+        
+        // Sort by id descending (newest first)
+        merged.sort((a, b) => b.id - a.id);
+        
+        setFlights(merged);
         setLoading(false);
-      })
-      .catch(err => {
-        setError(typeof err === 'string' ? err : 'Failed to load');
+      } catch (err) {
+        setError('Failed to load logbook');
         setLoading(false);
-      });
+      }
+    }
+    loadData();
   }, []);
 
   if (loading) {
@@ -41,7 +50,7 @@ export const Logbook = () => {
     );
   }
 
-  if (error) {
+  if (error && flights.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <BookOpen size={40} className="text-slate-700 mb-4" />

@@ -1,19 +1,8 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Gauge, Wind } from 'lucide-react';
-
-interface PirepRecord {
-  id: number;
-  flight_number: string;
-  departure: string;
-  arrival: string;
-  aircraft_registration: string;
-  aircraft_icao: string;
-  flight_time: number;
-  landing_rate: number | null;
-  score: number | null;
-  status: string;
-}
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { getLocalFlights, PirepRecord } from '../services/store';
 
 const MetricBar = ({ label, value, score, max }: { label: string; value: string; score: number; max: number }) => {
   const pct = Math.min((score / max) * 100, 100);
@@ -45,13 +34,32 @@ export const LandingAnalyserDetailed = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    invoke<PirepRecord[]>('fetch_pireps')
-      .then(data => {
-        const withRate = (Array.isArray(data) ? data : []).filter(p => p.landing_rate != null);
+    async function loadData() {
+      try {
+        const local = await getLocalFlights();
+        
+        let server: PirepRecord[] = [];
+        try {
+          const data = await invoke<PirepRecord[]>('fetch_pireps');
+          server = Array.isArray(data) ? data : [];
+        } catch (e) {}
+
+        const merged = [...local];
+        for (const sf of server) {
+          if (!merged.find(lf => lf.id === sf.id)) {
+            merged.push(sf);
+          }
+        }
+        
+        merged.sort((a, b) => b.id - a.id);
+        const withRate = merged.filter(p => p.landing_rate != null);
         setLatest(withRate.length > 0 ? withRate[0] : null);
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      } catch (e) {
+        setLoading(false);
+      }
+    }
+    loadData();
   }, []);
 
   if (loading) {
@@ -132,6 +140,54 @@ export const LandingAnalyserDetailed = () => {
           </div>
         </div>
       </div>
+
+      {latest.flare_profile && latest.flare_profile.length > 0 && (
+        <div className="bg-[#111111] border border-slate-800/50 rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Flare Profile</h3>
+          </div>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={latest.flare_profile} margin={{ top: 15, right: 20, bottom: 5, left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                <XAxis 
+                  dataKey="time_offset" 
+                  stroke="#666" 
+                  tickFormatter={(val) => `${val.toFixed(1)}s`}
+                  domain={['dataMin', 'dataMax']}
+                  type="number"
+                  tick={{ fontSize: 11 }}
+                />
+                <YAxis 
+                  stroke="#666" 
+                  tickFormatter={(val) => `${val}ft`}
+                  tick={{ fontSize: 11 }}
+                />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#161616', borderColor: '#333', color: '#fff', fontSize: '12px' }}
+                  labelFormatter={(val) => `T${Number(val) > 0 ? '+' : ''}${Number(val).toFixed(1)}s`}
+                  formatter={(value: any, name: any) => {
+                    if (name === 'altitude_agl') return [`${Number(value).toFixed(1)} ft`, 'Altitude AGL'];
+                    if (name === 'vertical_speed') return [`${Number(value).toFixed(0)} fpm`, 'V/S'];
+                    if (name === 'pitch') return [`${Number(value).toFixed(1)}°`, 'Pitch'];
+                    return [value, name];
+                  }}
+                />
+                <ReferenceLine x={0} stroke="#ef4444" strokeDasharray="3 3" label={{ value: 'Touchdown', position: 'top', fill: '#ef4444', fontSize: 10 }} />
+                <Line 
+                  type="monotone" 
+                  dataKey="altitude_agl" 
+                  stroke="#eab308" 
+                  strokeWidth={2} 
+                  dot={false}
+                  activeDot={{ r: 6, fill: '#eab308' }}
+                  isAnimationActive={true}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <MetricBar label="Landing Rate" value={`${lr} fpm`} score={lrScore} max={100} />

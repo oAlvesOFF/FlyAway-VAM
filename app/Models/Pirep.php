@@ -59,4 +59,9 @@ class Pirep extends Model
     {
         return $this->belongsTo(Schedule::class, 'flight_number', 'flight_number');
     }
+
+    public function simbrief()
+    {
+        return $this->hasOne(SimBrief::class);
+    }
 }

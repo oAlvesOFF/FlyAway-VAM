@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { saveApiKey } from '../services/authService';
+import { saveApiKey, getApiKey, clearApiKey } from '../services/authService';
 import { Eye, EyeOff, LogIn, User, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 
 interface UserInfo {
@@ -24,21 +24,31 @@ export const AuthPanel = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async () => {
-    if (!apiKey.trim()) return;
+  useEffect(() => {
+    async function init() {
+      const storedKey = await getApiKey();
+      if (storedKey) {
+        setApiKey(storedKey);
+        await login(storedKey);
+      }
+    }
+    init();
+  }, []);
+
+  const login = async (keyToUse: string) => {
+    if (!keyToUse.trim()) return;
     setLoading(true);
     setError(null);
 
     try {
-      await invoke('set_api_key', { key: apiKey.trim() });
-      await saveApiKey(apiKey.trim());
+      await invoke('set_api_key', { key: keyToUse.trim() });
+      await saveApiKey(keyToUse.trim());
     } catch (err) {
       setError('Erro ao guardar chave');
       setLoading(false);
       return;
     }
 
-    // 1. Método principal: fetch_me (/api/me)
     try {
       const me = await invoke<UserInfo>('fetch_me');
       if (me && me.name) {
@@ -61,7 +71,6 @@ export const AuthPanel = () => {
       console.warn('fetch_me falhou, a tentar fetch_pireps como fallback:', err);
     }
 
-    // 2. Fallback: fetch_pireps
     try {
       const pireps = await invoke<PirepWithUser[]>('fetch_pireps');
       if (Array.isArray(pireps) && pireps.length > 0) {
@@ -85,11 +94,19 @@ export const AuthPanel = () => {
       console.warn('fetch_pireps também falhou:', err);
     }
 
-    // 3. Ambos falharam — servidor instável
     setUser({ id: 0, name: 'Pilot (Dados indisponíveis)', pilot_id: '', total_hours: 0, total_flights: 0, rank: null });
     setError('Aviso: servidor instável — login aceite, dados limitados');
     setExpanded(false);
     setLoading(false);
+  };
+
+  const handleSubmit = () => login(apiKey);
+
+  const handleLogout = async () => {
+    setUser(null);
+    setApiKey('');
+    setError(null);
+    await clearApiKey();
   };
 
   if (user) {
@@ -113,8 +130,8 @@ export const AuthPanel = () => {
           <div className="text-[10px] text-slate-600 pl-5">{user.rank.name}</div>
         )}
         <button
-          onClick={() => { setUser(null); setApiKey(''); setError(null); }}
-          className="flex items-center gap-1.5 px-1 text-[10px] text-slate-600 hover:text-slate-400 transition-colors"
+          onClick={handleLogout}
+          className="flex items-center gap-1.5 px-1 text-[10px] text-slate-600 hover:text-slate-400 transition-colors mt-2"
         >
           <XCircle size={10} /> sair
         </button>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ActiveFlight;
 use App\Models\FlightPosition;
+use App\Services\DiscordWebhookService;
 use App\Services\MqttService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -53,15 +54,24 @@ class FlightTrackingController extends Controller
             ->first();
 
         if ($flight) {
+            // Guardar phase antiga ANTES do update para comparar depois
+            $oldPhase = $flight->phase;
+            $newPhase = $validated['phase'] ?? $flight->phase;
+
             $flight->update([
                 'current_lat' => $validated['current_lat'],
                 'current_lng' => $validated['current_lng'],
                 'heading' => $validated['heading'] ?? $flight->heading,
                 'altitude' => $validated['altitude'] ?? $flight->altitude,
                 'ground_speed' => $validated['ground_speed'] ?? $flight->ground_speed,
-                'phase' => $validated['phase'] ?? $flight->phase,
+                'phase' => $newPhase,
                 'position_updated_at' => now(),
             ]);
+
+            // Disparar webhook Discord apenas se a phase mudou
+            if ($oldPhase !== $newPhase) {
+                app(DiscordWebhookService::class)->sendFlightStatus($flight);
+            }
         } else {
             $flight = ActiveFlight::create([
                 'flight_number' => $validated['flight_number'],
@@ -85,6 +95,9 @@ class FlightTrackingController extends Controller
                 'started_at' => now(),
                 'position_updated_at' => now(),
             ]);
+
+            // Notificar Discord sobre novo voo iniciado
+            app(DiscordWebhookService::class)->sendFlightStatus($flight);
         }
 
         FlightPosition::create([
@@ -118,6 +131,9 @@ class FlightTrackingController extends Controller
             'position_updated_at' => now(),
             'ended_at' => now(),
         ]);
+
+        // Notificar Discord que o voo pousou
+        app(DiscordWebhookService::class)->sendFlightStatus($flight);
 
         app(MqttService::class)->publish("flyaway/flights/{$flight->id}/complete", [
             'flight_number' => $flight->flight_number,

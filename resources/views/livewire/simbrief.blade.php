@@ -251,8 +251,13 @@ new class extends Component {
 
         {{-- Prefile & Export Bar --}}
         <div class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 px-6 py-3 flex flex-wrap items-center gap-3">
+            <a href="/file-pirep"
+               class="bg-crimson-600 hover:bg-crimson-700 text-white border border-crimson-700 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors flex items-center gap-1.5 mr-2 shadow-sm">
+                <i class="ph-bold ph-paper-plane-tilt text-sm"></i> File PIREP
+            </a>
+
             <div class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mr-2 flex items-center gap-1.5">
-                <i class="ph-bold ph-paper-plane-right text-lg"></i> Exportar:
+                <i class="ph-bold ph-share-network text-lg"></i> Exportar:
             </div>
             
             @if(!empty($ofp['prefile']['vatsim']) && is_array($ofp['prefile']['vatsim']))
@@ -291,11 +296,13 @@ new class extends Component {
         {{-- Tab Bar --}}
         <div class="flex gap-2 px-6 pt-4 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
             @foreach([
-                'route'   => ['label' => 'Rota',     'icon' => 'ph-map-trifold'],
-                'weather' => ['label' => 'Tempo',    'icon' => 'ph-cloud-sun'],
-                'fuel'    => ['label' => 'Combust.', 'icon' => 'ph-gas-pump'],
-                'navlog'  => ['label' => 'NavLog',   'icon' => 'ph-list-numbers'],
-                'ofppdf'  => ['label' => 'OFP PDF',  'icon' => 'ph-file-pdf'],
+                'route'   => ['label' => 'Rota',       'icon' => 'ph-map-trifold'],
+                'weather' => ['label' => 'Tempo',      'icon' => 'ph-cloud-sun'],
+                'fuel'    => ['label' => 'Combust.',   'icon' => 'ph-gas-pump'],
+                'navlog'  => ['label' => 'NavLog',     'icon' => 'ph-list-numbers'],
+                'charts'  => ['label' => 'Cartas',     'icon' => 'ph-images'],
+                'tlr'     => ['label' => 'Desempenho', 'icon' => 'ph-trend-up'],
+                'ofppdf'  => ['label' => 'OFP PDF',    'icon' => 'ph-file-pdf'],
             ] as $key => $meta)
             <button wire:click="setTab('{{ $key }}')"
                     class="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors border-b-2 -mb-px rounded-t-lg
@@ -418,6 +425,56 @@ new class extends Component {
                 </table>
                 @if(empty($ofp['waypoints']))
                 <div class="py-8 text-center text-slate-400 dark:text-slate-500 text-sm font-medium">Nenhum waypoint disponível.</div>
+                @endif
+            </div>
+            @endif
+
+            {{-- Charts Tab --}}
+            @if($activeTab === 'charts')
+            <div class="space-y-6">
+                @if(!empty($ofp['chart_images']))
+                    <div class="grid md:grid-cols-2 gap-4">
+                        @foreach($ofp['chart_images'] as $img)
+                        <div class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                            <img src="{{ $img['url'] }}" alt="{{ $img['name'] }}" class="w-full h-auto object-cover">
+                            <div class="p-3 text-center bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
+                                <p class="text-xs font-bold text-slate-700 dark:text-slate-300">{{ $img['name'] }}</p>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="py-16 text-center space-y-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <i class="ph-fill ph-images text-5xl text-slate-300 dark:text-slate-600"></i>
+                        <p class="text-slate-700 dark:text-slate-300 font-bold">Nenhuma Carta Disponível</p>
+                    </div>
+                @endif
+            </div>
+            @endif
+
+            {{-- TLR Tab --}}
+            @if($activeTab === 'tlr')
+            <div class="space-y-6">
+                @if(!empty($ofp['tlr']['takeoff']) || !empty($ofp['tlr']['landing']))
+                    <div class="grid md:grid-cols-2 gap-6">
+                        @if(!empty($ofp['tlr']['takeoff']))
+                        <div>
+                            <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Takeoff Performance</p>
+                            <div class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 font-mono text-[10px] sm:text-xs text-slate-800 dark:text-slate-200 leading-loose whitespace-pre-wrap break-all">{{ $ofp['tlr']['takeoff'] }}</div>
+                        </div>
+                        @endif
+                        @if(!empty($ofp['tlr']['landing']))
+                        <div>
+                            <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Landing Performance</p>
+                            <div class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 font-mono text-[10px] sm:text-xs text-slate-800 dark:text-slate-200 leading-loose whitespace-pre-wrap break-all">{{ $ofp['tlr']['landing'] }}</div>
+                        </div>
+                        @endif
+                    </div>
+                @else
+                    <div class="py-16 text-center space-y-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <i class="ph-fill ph-trend-up text-5xl text-slate-300 dark:text-slate-600"></i>
+                        <p class="text-slate-700 dark:text-slate-300 font-bold">Nenhum Relatório de Desempenho (TLR)</p>
+                    </div>
                 @endif
             </div>
             @endif

@@ -11,6 +11,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Notifications\PirepApproved;
 use App\Notifications\PirepRejected;
+use App\Services\DiscordWebhookService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -47,8 +48,8 @@ class PirepController extends Controller
             'flight_number' => 'required|string|max:20',
             'departure' => 'required|string|size:4',
             'arrival' => 'required|string|size:4',
-            'aircraft_registration' => 'required|string|exists:aircraft,registration',
-            'aircraft_icao' => 'required|string|max:4',
+            'aircraft_registration' => 'required|string|max:20',
+            'aircraft_icao' => 'required|string|max:10',
             'flight_time' => 'required|numeric|min:0.01|max:30',
             'landing_rate' => 'nullable|integer|min:-2000|max:2000',
             'route' => 'nullable|string',
@@ -165,6 +166,8 @@ class PirepController extends Controller
     {
         $pirep->update(['status' => 'approved']);
         $this->processApproval($pirep, $pirep->user);
+        // Notificar Discord sobre aprovação
+        app(DiscordWebhookService::class)->sendPirepStatus($pirep);
         return response()->json(['message' => 'PIREP approved']);
     }
 
@@ -185,6 +188,9 @@ class PirepController extends Controller
         if ($pirep->user) {
             $pirep->user->notify(new PirepRejected($pirep));
         }
+
+        // Notificar Discord sobre rejeição
+        app(DiscordWebhookService::class)->sendPirepStatus($pirep);
 
         return response()->json(['message' => 'PIREP rejected']);
     }

@@ -15,7 +15,7 @@ class SimbriefService
      */
     public function fetchOFP(?string $username, ?string $userid = null): ?array
     {
-        $params = ['json' => 1];
+        $params = [];
 
         if ($userid) {
             $params['userid'] = $userid;
@@ -26,15 +26,37 @@ class SimbriefService
         }
 
         try {
-            $response = Http::timeout(15)->get($this->baseUrl, $params);
+            // Fetch JSON first for accurate parsing in the UI
+            $jsonParams = array_merge($params, ['json' => 1]);
+            $jsonResponse = Http::timeout(15)->get($this->baseUrl, $jsonParams);
 
-            if (!$response->successful()) return null;
+            if (!$jsonResponse->successful()) return null;
 
-            $data = $response->json();
-
+            $data = $jsonResponse->json();
             if (empty($data) || isset($data['fetch']['error'])) return null;
 
-            return $this->parseOFP($data);
+            $parsed = $this->parseOFP($data);
+
+            // Fetch XML for database storage to maintain PHPVMS compatibility
+            $xmlResponse = Http::timeout(10)->get($this->baseUrl, $params);
+            $xmlStr = $xmlResponse->successful() ? $xmlResponse->body() : null;
+
+            // Extract OFP ID from JSON
+            $ofpId = $data['params']['ofp_id'] ?? null;
+
+            if ($ofpId && $xmlStr) {
+                \App\Models\SimBrief::updateOrCreate(
+                    ['id' => $ofpId],
+                    [
+                        'user_id' => auth()->id() ?? 1,
+                        'ofp_xml' => $xmlStr,
+                        'flight_id' => $parsed['flight_number'] ?? null,
+                    ]
+                );
+                $parsed['simbrief_id'] = $ofpId;
+            }
+
+            return $parsed;
         } catch (\Exception $e) {
             $identifier = $userid ?? $username;
             Log::warning("SimBrief fetch failed for {$identifier}: {$e->getMessage()}");
@@ -105,6 +127,32 @@ class SimbriefService
         $filesImg = is_string($files['image'] ?? null) ? $files['image'] : '';
         $filesPdf = is_string($files['pdf'] ?? null) ? $files['pdf'] : '';
 
+        // Extract images (Charts, SigWx, etc)
+        $chartImages = [];
+        $imgBaseDir = is_string($raw['images']['directory'] ?? null) ? $raw['images']['directory'] : '';
+        $maps = $raw['images']['map'] ?? [];
+        if (isset($maps['name'])) {
+            // single item array issue from xml to json or just single map
+            $maps = [$maps];
+        }
+        if (is_array($maps)) {
+            foreach ($maps as $img) {
+                if (is_array($img) && isset($img['name']) && isset($img['link'])) {
+                    $chartImages[] = [
+                        'name' => $img['name'],
+                        'url'  => rtrim($imgBaseDir, '/') . '/' . ltrim($img['link'], '/')
+                    ];
+                }
+            }
+        }
+
+        // TLR (Takeoff and Landing Report)
+        $tlr = [];
+        if (isset($raw['tlr']) && is_array($raw['tlr'])) {
+            $tlr['takeoff'] = $raw['tlr']['takeoff'] ?? '';
+            $tlr['landing'] = $raw['tlr']['landing'] ?? '';
+        }
+
         return [
             'flight_number'    => $general['flight_number']   ?? '',
             'aircraft_icao'    => $general['icao_actype']     ?? '',
@@ -142,6 +190,8 @@ class SimbriefService
             'pdf_link'         => ($filesDir && $filesPdf)
                                     ? rtrim($filesDir, '/') . '/' . ltrim($filesPdf, '/')
                                     : $filesPdf,
+            'chart_images'     => $chartImages,
+            'tlr'              => $tlr,
             'prefile'          => $prefile,
             'fms_downloads'    => $fms,
         ];

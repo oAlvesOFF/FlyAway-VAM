@@ -20,3 +20,9 @@ export const loadAndSyncApiKey = async () => {
     await invoke('set_api_key', { key: val.value });
   }
 };
+
+export const clearApiKey = async () => {
+  await store.delete('api_key');
+  await store.save();
+  await invoke('set_api_key', { key: '' });
+};
