@@ -45,6 +45,7 @@ class User extends Authenticatable
         'pilot_id',
         'rank_id',
         'role_id',
+        'airline_id',
         'total_hours',
         'total_flights',
         'last_location',
@@ -83,6 +84,11 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class);
     }
 
+    public function airline(): BelongsTo
+    {
+        return $this->belongsTo(Airline::class);
+    }
+
     public function bids(): HasMany
     {
         return $this->hasMany(Bid::class);
@@ -101,6 +107,11 @@ class User extends Authenticatable
     public function tours(): BelongsToMany
     {
         return $this->belongsToMany(Tour::class)->withPivot('progress', 'completed', 'completed_at')->withTimestamps();
+    }
+
+    public function typeratings(): BelongsToMany
+    {
+        return $this->belongsToMany(Typerating::class, 'typerating_user')->withTimestamps();
     }
 
     public function hasPermission(string $slug): bool

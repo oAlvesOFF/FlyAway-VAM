@@ -164,6 +164,11 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     Volt::route('/settings', 'admin.settings')->name('settings');
     Volt::route('/pages', 'admin.custom-pages')->name('pages');
 
+    Volt::route('/airlines', 'admin.airlines.index')->name('airlines');
+    Volt::route('/subfleets', 'admin.subfleets.index')->name('subfleets');
+    Volt::route('/typeratings', 'admin.typeratings.index')->name('typeratings');
+    Volt::route('/fares', 'admin.fares.index')->name('fares');
+
     Route::get('/export/pilots/csv', [App\Http\Controllers\Admin\ExportController::class, 'pilotsCsv'])->name('export.pilots.csv');
     Route::get('/export/pilots/print', [App\Http\Controllers\Admin\ExportController::class, 'pilotsPrint'])->name('export.pilots.print');
     Route::get('/export/pireps/csv', [App\Http\Controllers\Admin\ExportController::class, 'pirepsCsv'])->name('export.pireps.csv');

@@ -41,12 +41,22 @@ class Pirep extends Model
         'aircraft_registration',
         'aircraft_icao',
         'flight_time',
+        'block_time',
+        'planned_flight_time',
+        'zfw',
+        'block_fuel',
+        'fuel_used',
         'landing_rate',
         'score',
         'route',
         'status',
+        'source',
+        'state',
+        'flight_type',
         'log',
         'submitted_at',
+        'block_off_time',
+        'block_on_time',
         'rejection_reason',
     ];
 
@@ -63,5 +73,10 @@ class Pirep extends Model
     public function simbrief()
     {
         return $this->hasOne(SimBrief::class);
+    }
+
+    public function acars()
+    {
+        return $this->hasMany(Acars::class, 'pirep_id')->orderBy('created_at', 'asc')->orderBy('sim_time', 'asc');
     }
 }

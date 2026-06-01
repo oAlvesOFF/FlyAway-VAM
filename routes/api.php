@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AcarsController;
 use App\Http\Controllers\Api\FlightController;
 use App\Http\Controllers\Api\FlightStreamController;
 use App\Http\Controllers\Api\FlightTrackingController;
@@ -23,4 +24,10 @@ Route::middleware('api.auth')->group(function () {
     Route::get('schedules/my-reservations', [FlightController::class, 'myReservations']);
     Route::post('flights/track', [FlightTrackingController::class, 'track']);
     Route::post('flights/{flight}/complete', [FlightTrackingController::class, 'complete']);
+
+    // ACARS Live Telemetry Endpoints
+    Route::post('acars/position', [AcarsController::class, 'position']);
+    Route::post('acars/log', [AcarsController::class, 'log']);
+    Route::get('pireps/{pirep}/acars', [AcarsController::class, 'history']);
 });
+

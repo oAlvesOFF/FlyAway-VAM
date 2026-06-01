@@ -56,6 +56,7 @@ class ActiveFlight extends Model
         'phase',
         'status',
         'user_id',
+        'airline_id',
         'started_at',
         'position_updated_at',
         'ended_at',
@@ -79,6 +80,11 @@ class ActiveFlight extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class);
+    }
+
+    public function airline(): BelongsTo
+    {
+        return $this->belongsTo(Airline::class);
     }
 
     public function scopeActive($query)

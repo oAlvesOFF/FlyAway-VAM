@@ -32,7 +32,13 @@ class Schedule extends Model
         'flight_time',
         'departure_time',
         'altitude',
+        'airline_id',
     ];
+
+    public function airline(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Airline::class);
+    }
 
     public function bids(): HasMany
     {

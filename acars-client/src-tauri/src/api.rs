@@ -82,6 +82,17 @@ pub struct FlightTelemetry {
     pub altitude: i32,
     pub ground_speed: i32,
     pub phase: String,
+    // Extended telemetry for ACARS position endpoint
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vs: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ias: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fuel_flow: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fuel_remaining_kg: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub zfw_kg: Option<f32>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -200,6 +211,15 @@ pub struct PirepSubmitRequest {
     pub landing_rate: Option<i32>,
     pub route: Option<String>,
     pub log: Option<String>,
+    // Advanced block/fuel data
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_fuel: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fuel_used: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub zfw: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_time: Option<u32>,
 }
 
 pub struct ApiClient {
@@ -343,7 +363,6 @@ impl ApiClient {
         if sanitized.aircraft_registration.len() > 20 {
             sanitized.aircraft_registration = sanitized.aircraft_registration[..20].to_string();
         }
-        // Ensure departure/arrival are max 4 chars
         if sanitized.departure.len() > 4 {
             sanitized.departure = sanitized.departure[..4].to_string();
         }
@@ -351,8 +370,9 @@ impl ApiClient {
             sanitized.arrival = sanitized.arrival[..4].to_string();
         }
 
+        // Send to the dedicated ACARS position endpoint (stores to `acars` table)
         let response = match self.client
-            .post(format!("{}/api/flights/track", self.base_url))
+            .post(format!("{}/api/acars/position", self.base_url))
             .header("Authorization", self.auth_header(api_key))
             .json(&sanitized)
             .send()
@@ -370,6 +390,15 @@ impl ApiClient {
                 return Err(format!("CLIENT_ERROR: {}", msg));
             }
         }
+
+        // Also keep the legacy /api/flights/track call so the live map still works
+        let _ = self.client
+            .post(format!("{}/api/flights/track", self.base_url))
+            .header("Authorization", self.auth_header(api_key))
+            .json(&sanitized)
+            .send()
+            .await;
+
         Ok(())
     }
 

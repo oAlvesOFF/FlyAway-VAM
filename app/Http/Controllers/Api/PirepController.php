@@ -43,17 +43,22 @@ class PirepController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'user_id' => 'nullable|integer|exists:users,id',
-            'pilot_id' => 'nullable|string|max:20',
-            'flight_number' => 'required|string|max:20',
-            'departure' => 'required|string|size:4',
-            'arrival' => 'required|string|size:4',
+            'user_id'               => 'nullable|integer|exists:users,id',
+            'pilot_id'              => 'nullable|string|max:20',
+            'flight_number'         => 'required|string|max:20',
+            'departure'             => 'required|string|size:4',
+            'arrival'               => 'required|string|size:4',
             'aircraft_registration' => 'required|string|max:20',
-            'aircraft_icao' => 'required|string|max:10',
-            'flight_time' => 'required|numeric|min:0.01|max:30',
-            'landing_rate' => 'nullable|integer|min:-2000|max:2000',
-            'route' => 'nullable|string',
-            'log' => 'nullable|string',
+            'aircraft_icao'         => 'required|string|max:10',
+            'flight_time'           => 'required|numeric|min:0.01|max:30',
+            'landing_rate'          => 'nullable|integer|min:-2000|max:2000',
+            'route'                 => 'nullable|string',
+            'log'                   => 'nullable|string',
+            // Advanced fields from ACARS client
+            'block_time'            => 'nullable|integer|min:0',
+            'block_fuel'            => 'nullable|numeric|min:0',
+            'fuel_used'             => 'nullable|numeric|min:0',
+            'zfw'                   => 'nullable|numeric|min:0',
         ]);
 
         // Resolve user
@@ -75,7 +80,7 @@ class PirepController extends Controller
             return response()->json(['error' => 'PIREP already filed for this flight recently. Please wait a few minutes before submitting again.'], 422);
         }
 
-        // Score from absolute landing rate (null if not captured, e.g. flight ended before touchdown)
+        // Score from absolute landing rate (null if not captured)
         $validated['landing_rate'] = isset($validated['landing_rate']) ? (int) $validated['landing_rate'] : null;
         $lr = abs((int) ($validated['landing_rate'] ?? 0));
         $score = match (true) {
@@ -84,19 +89,49 @@ class PirepController extends Controller
             default   => 100,
         };
 
-        $validated['user_id'] = $userId;
-        $validated['score'] = $score;
+        $validated['user_id']      = $userId;
+        $validated['score']        = $score;
         $validated['submitted_at'] = now();
+        $validated['source']       = 1; // 1 = ACARS
+        $validated['state']        = 0; // In progress → will be set to completed/accepted
 
-        // Auto-approve if score meets threshold
-        $threshold = (int) Setting::get('auto_approve_threshold', 90);
-        if ($score >= $threshold) {
-            $validated['status'] = 'approved';
-            $pirep = Pirep::create($validated);
-            $this->processApproval($pirep, $pirep->user);
+        // If pilot had an in-progress draft PIREP from ACARS live tracking, promote it
+        $draftPirep = Pirep::where('user_id', $userId)
+            ->where('flight_number', $validated['flight_number'])
+            ->where('status', 'draft')
+            ->latest()
+            ->first();
+
+        if ($draftPirep) {
+            $draftPirep->update([
+                'status'        => $score >= (int) Setting::get('auto_approve_threshold', 90) ? 'approved' : 'pending',
+                'flight_time'   => $validated['flight_time'],
+                'landing_rate'  => $validated['landing_rate'],
+                'score'         => $score,
+                'log'           => $validated['log'] ?? $draftPirep->log,
+                'block_time'    => $validated['block_time'] ?? null,
+                'block_fuel'    => $validated['block_fuel'] ?? null,
+                'fuel_used'     => $validated['fuel_used'] ?? null,
+                'zfw'           => $validated['zfw'] ?? null,
+                'submitted_at'  => now(),
+                'block_on_time' => now(),
+            ]);
+            $pirep = $draftPirep->fresh();
         } else {
-            $validated['status'] = 'pending';
-            $pirep = Pirep::create($validated);
+            // Auto-approve if score meets threshold
+            $threshold = (int) Setting::get('auto_approve_threshold', 90);
+            if ($score >= $threshold) {
+                $validated['status'] = 'approved';
+                $pirep = Pirep::create($validated);
+                $this->processApproval($pirep, $pirep->user);
+            } else {
+                $validated['status'] = 'pending';
+                $pirep = Pirep::create($validated);
+            }
+        }
+
+        if ($pirep->status === 'approved') {
+            $this->processApproval($pirep, $pirep->user);
         }
 
         // Close any active flight for this user and flight number
@@ -107,15 +142,15 @@ class PirepController extends Controller
 
         if ($activeFlight) {
             $activeFlight->update([
-                'status' => 'completed',
-                'phase' => 'landed',
+                'status'              => 'completed',
+                'phase'               => 'landed',
                 'position_updated_at' => now(),
-                'ended_at' => now(),
+                'ended_at'            => now(),
             ]);
 
             app(\App\Services\MqttService::class)->publish("flyaway/flights/{$activeFlight->id}/complete", [
                 'flight_number' => $activeFlight->flight_number,
-                'status' => 'completed',
+                'status'        => 'completed',
             ]);
         }
 

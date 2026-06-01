@@ -32,6 +32,7 @@ class Aircraft extends Model
         'category',
         'last_service_at',
         'total_hours_since_service',
+        'subfleet_id',
     ];
 
     protected function casts(): array
@@ -40,6 +41,11 @@ class Aircraft extends Model
             'last_service_at' => 'datetime',
             'total_hours_since_service' => 'decimal:2',
         ];
+    }
+
+    public function subfleet(): Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Subfleet::class);
     }
 
     public function bids(): HasMany

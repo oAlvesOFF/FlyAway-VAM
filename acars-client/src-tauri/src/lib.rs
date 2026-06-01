@@ -133,6 +133,11 @@ pub fn run() {
                             altitude: snap.altitude_msl_ft as i32,
                             ground_speed: snap.groundspeed_kt as i32,
                             phase: String::new(),
+                            vs: Some(snap.vertical_speed_fpm),
+                            ias: Some(snap.indicated_airspeed_kt as i32),
+                            fuel_flow: snap.fuel_flow_kg_per_h,
+                            fuel_remaining_kg: Some(snap.fuel_total_kg),
+                            zfw_kg: snap.zfw_kg,
                         };
                         
                         if let Some(ctx) = state_ref.read().await.flight_context.as_ref() {
@@ -370,47 +375,68 @@ async fn fetch_active_flights() -> Result<Vec<ActiveFlightRecord>, String> {
 async fn complete_flight_with_pirep(
     state: tauri::State<'_, Arc<RwLock<AppState>>>,
     flight_context_state: tauri::State<'_, Arc<RwLock<Option<FlightContext>>>>,
+    sim: tauri::State<'_, SimConnection>,
 ) -> Result<PirepRecord, String> {
-    let s = state.read().await;
-    
-    let ctx = s.flight_context.as_ref().ok_or_else(|| "No active flight context found".to_string())?;
-    let key = s.api_key.clone().ok_or_else(|| "No API key set".to_string())?;
-    
-    let landing_rate = s.landing_analyser.metrics.as_ref()
-        .map(|m| m.vertical_speed_at_touchdown as i32);
+    // --- Read everything we need from state, then drop the lock ---
+    let (key, landing_rate, flare_profile, logs, flight_time, block_time_mins,
+         flight_number, departure, arrival, aircraft_registration, aircraft_icao) = {
+        let s = state.read().await;
 
-    let flare_profile = s.landing_analyser.metrics.as_ref()
-        .map(|m| m.flare_profile.clone());
-    
-    let logs = s.flight_logs.clone();
-    
-    let flight_time_hours = match s.start_time {
-        Some(start) => {
-            match std::time::SystemTime::now().duration_since(start) {
-                Ok(duration) => duration.as_secs_f64() / 3600.0,
-                Err(_) => 0.1,
+        let ctx = s.flight_context.as_ref().ok_or_else(|| "No active flight context found".to_string())?;
+        let key = s.api_key.clone().ok_or_else(|| "No API key set".to_string())?;
+
+        let landing_rate = s.landing_analyser.metrics.as_ref()
+            .map(|m| m.vertical_speed_at_touchdown as i32);
+
+        let flare_profile = s.landing_analyser.metrics.as_ref()
+            .map(|m| m.flare_profile.clone());
+
+        let logs = s.flight_logs.clone();
+
+        let flight_time_hours = match s.start_time {
+            Some(start) => {
+                match std::time::SystemTime::now().duration_since(start) {
+                    Ok(duration) => duration.as_secs_f64() / 3600.0,
+                    Err(_) => 0.1,
+                }
             }
-        }
-        None => 0.1,
-    };
-    let flight_time = flight_time_hours.max(0.01);
-    
+            None => 0.1,
+        };
+        let flight_time = flight_time_hours.max(0.01);
+        let block_time_mins = (flight_time * 60.0).round() as u32;
+
+        (
+            key, landing_rate, flare_profile, logs, flight_time, block_time_mins,
+            ctx.flight_number.clone(),
+            ctx.departure.clone(),
+            ctx.arrival.clone(),
+            ctx.aircraft_registration.clone(),
+            ctx.aircraft_icao.clone(),
+        )
+    }; // read lock released here
+
+    // --- Get simulator snapshot for fuel data (non-blocking) ---
+    let snap_opt = sim.snapshot();
+
+    // --- Build PIREP request ---
     let pirep_req = PirepSubmitRequest {
-        flight_number: ctx.flight_number.clone(),
-        departure: ctx.departure.clone(),
-        arrival: ctx.arrival.clone(),
-        aircraft_registration: ctx.aircraft_registration.clone(),
-        aircraft_icao: ctx.aircraft_icao.clone(),
+        flight_number,
+        departure,
+        arrival,
+        aircraft_registration,
+        aircraft_icao,
         flight_time,
         landing_rate,
         route: None,
         log: if !logs.is_empty() { Some(logs) } else { None },
+        block_fuel: snap_opt.as_ref().map(|s| s.fuel_total_kg),
+        fuel_used: snap_opt.as_ref().and_then(|s| if s.fuel_used_kg > 0.0 { Some(s.fuel_used_kg) } else { None }),
+        zfw: snap_opt.as_ref().and_then(|s| s.zfw_kg),
+        block_time: Some(block_time_mins),
     };
-    
-    drop(s);
-    
+
     let mut result = get_api_client().submit_pirep(&key, &pirep_req).await;
-    
+
     if let Ok(ref mut r) = result {
         r.flare_profile = flare_profile;
         let mut s_write = state.write().await;
@@ -418,11 +444,11 @@ async fn complete_flight_with_pirep(
         s_write.landing_analyser = LandingAnalyser::new();
         s_write.flight_context = None;
         s_write.start_time = None;
-        
+
         let mut ctx_write = flight_context_state.write().await;
         *ctx_write = None;
     }
-    
+
     result
 }
 
